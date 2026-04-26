@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>Slack Layout Prototype</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root {
+    --tab-rail: 70px;
+    --resizer: 8px;
+    --sidebar: 330px;
+    --flexpane: 723px;
+    --top-nav: 40px;
+    --spacer: 76px;
+
+    --sidebar-min: 180px;
+    --sidebar-max: 450px;
+    --flexpane-min: 300px;
+    --flexpane-max: 1000px;
+    --main-min: 300px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif; color: #fff; }
+  html { overflow: hidden; }
+  body { display: grid; grid-template-rows: var(--top-nav) 1fr; background: #1a0826; overflow-x: auto; overflow-y: hidden; min-width: 0; }
+
+  /* ─── Top nav ─── */
+  .top-nav {
+    display: grid;
+    grid-template-columns: var(--spacer) 1fr;
+    background: #2c0a3f;
+    border-bottom: 1px solid #3a1252;
+  }
+  .spacer { border-right: 1px dashed rgba(255,255,255,.15); display: grid; place-items: center; font-size: 9px; color: rgba(255,255,255,.4); }
+  .top-nav__main { display: flex; align-items: center; padding: 0 16px; font-size: 12px; color: rgba(255,255,255,.7); gap: 12px; }
+  .top-nav__main::before { content: "top_nav"; font-weight: 600; color: rgba(255,255,255,.85); }
+
+  /* ─── Workspace body ─── */
+  .workspace {
+    display: grid;
+    grid-template-columns: var(--tab-rail) var(--sidebar) var(--resizer) minmax(0,1fr) var(--resizer) var(--flexpane);
+    height: 100%;
+    min-height: 0;
+    /* 열기/닫기 시 우측에서 밀고 들어오는 애니메이션. 드래그 중엔 off */
+    transition: grid-template-columns 220ms ease;
+  }
+  .workspace.is-dragging { transition: none; }
+  .workspace.flexpane-closed {
+    grid-template-columns: var(--tab-rail) var(--sidebar) var(--resizer) minmax(0,1fr) 0 0;
+  }
+  .workspace.takeover {
+    /* primary가 0으로 접히고 secondary가 남는 공간 전부 차지 (DOM은 유지) */
+    grid-template-columns: var(--tab-rail) var(--sidebar) var(--resizer) 0 0 minmax(0,1fr);
+  }
+  .workspace.takeover .resizer--flex { visibility: hidden; }
+  /* .pane--main은 display 유지 (width만 0으로). overflow:hidden으로 콘텐츠 숨김 */
+  .workspace.takeover .pane--main {
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .pane {
+    min-width: 0;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    border-right: 1px solid rgba(255,255,255,.06);
+    overflow: hidden;
+  }
+  .pane__header {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: rgba(255,255,255,.7);
+    background: rgba(0,0,0,.15);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .pane__header .w { opacity: .5; font-weight: 400; font-size: 10px; margin-left: auto; }
+  .pane__body {
+    padding: 12px;
+    font-size: 11px;
+    color: rgba(255,255,255,.45);
+    overflow: auto;
+    min-width: 0;
+  }
+
+  .pane--tab-rail { background: #2c0a3f; }
+  .pane--tab-rail .pane__header { padding: 8px 4px; writing-mode: vertical-rl; transform: rotate(180deg); align-self: start; }
+  .pane--sidebar { background: #3a1252; }
+  .sb-body { color: rgba(255,255,255,.85); padding: 0; font-size: 13px; }
+  .sb-nav { display: flex; gap: 6px; padding: 10px 12px 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .sb-nav-item { padding: 3px 10px; border-radius: 4px; color: rgba(255,255,255,.7); font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .sb-nav-item:hover { background: rgba(255,255,255,.08); }
+  .sb-nav-item.active { background: rgba(255,255,255,.18); color: #fff; }
+  .sb-section-head { padding: 6px 16px; color: rgba(255,255,255,.85); font-size: 13px; cursor: pointer; }
+  .sb-section-head:hover { background: rgba(255,255,255,.05); }
+  .sb-group-label { padding: 12px 16px 4px; color: rgba(255,255,255,.55); font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+  .sb-channel { padding: 4px 16px; color: rgba(255,255,255,.75); font-size: 13px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sb-channel:hover { background: rgba(255,255,255,.05); }
+  .pane--main {
+    background: #fff;
+    color: #1d1c1d;
+    border-right: 0;
+  }
+  .pane--main .pane__header { background: rgba(0,0,0,.04); color: #1d1c1d; }
+  .pane--main .pane__body { color: #666; }
+  .msg-list { display: flex; flex-direction: column; gap: 14px; }
+  .msg { padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,.05); background: #fff; }
+  .msg__head { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .msg__head b { color: #1d1c1d; font-weight: 600; }
+  .msg__text { font-size: 13px; color: #1d1c1d; line-height: 1.45; }
+  .reply-btn {
+    margin-top: 8px;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid #d9d9d9;
+    background: #fff;
+    color: #1264a3;
+    cursor: pointer;
+  }
+  .reply-btn:hover { background: #f8f8f8; border-color: #c0c0c0; }
+
+  /* flexpane — 구조적으로는 grid sibling이지만 시각적으로 살짝 떠 보이게 */
+  .pane--flex {
+    background: #fff;
+    color: #1d1c1d;
+    position: relative;
+    z-index: 1;
+    /* 좌측 border + 바깥으로 퍼지는 shadow 조합으로 "elevated" 착시 */
+    box-shadow:
+      -1px 0 0 rgba(0,0,0,.08),          /* 얇은 좌측 구분선 */
+      -4px 0 12px rgba(0,0,0,.04),       /* 좌측으로 퍼지는 그림자 */
+      -8px 0 24px rgba(0,0,0,.02);       /* 확산 그림자 */
+  }
+  .pane--flex .pane__header {
+    background: #fafafa;
+    color: #1d1c1d;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+  }
+  .pane--flex .pane__body { color: #666; background: #fff; }
+  .pane--flex .back { display: none; background: none; border: 0; font-size: 14px; cursor: pointer; color: #1d1c1d; padding: 0 6px; }
+  .pane--flex .close-flex {
+    background: none;
+    border: 0;
+    font-size: 14px;
+    cursor: pointer;
+    color: #1d1c1d;
+    padding: 0 6px;
+    opacity: .6;
+  }
+  .pane--flex .close-flex:hover { opacity: 1; }
+  .workspace.takeover .pane--flex .back { display: inline; }
+
+  /* ─── Resizers ─── */
+  .resizer {
+    position: relative;
+    cursor: col-resize;
+  }
+  .resizer::after {
+    content: "";
+    position: absolute; inset: 4px auto 4px 3px;
+    width: 2px; border-radius: 999px;
+    background: transparent;
+  }
+  .resizer:hover::after { background: rgba(100,160,255,.8); }
+
+  /* sidebar ↔ main 리사이저: 어두운 사이드바 배경 */
+  .resizer--sidebar { background: rgba(0,0,0,.15); }
+  /* main ↔ flexpane 리사이저: 양쪽 흰 배경이라 투명하게 */
+  .resizer--flex {
+    background: #fff;
+    z-index: 2; /* flexpane의 shadow 위로 올려서 hover 영역 보이게 */
+  }
+
+  /* ─── Toggle & info ─── */
+  .toggle {
+    position: fixed; right: 12px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 6px; z-index: 10;
+  }
+  .toggle button {
+    font-size: 10px;
+    padding: 6px 10px; border-radius: 6px; border: 0; cursor: pointer;
+    background: #611f69; color: #fff; white-space: nowrap;
+  }
+  .toggle button:hover { background: #7a2b85; }
+  .info {
+    position: fixed; left: 12px; bottom: 12px; z-index: 10;
+    font-size: 10px; color: rgba(255,255,255,.6);
+    background: rgba(0,0,0,.4); padding: 8px 10px; border-radius: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  }
+</style>
+</head>
+<body>
+
+<header class="top-nav">
+  <div class="spacer">native_ui_spacer<br>76×40</div>
+  <div class="top-nav__main"><span style="font-size:10px;opacity:.5">h=40, w=viewport</span></div>
+</header>
+
+<main class="workspace" id="workspace">
+  <aside class="pane pane--tab-rail">
+    <div class="pane__header">globalSidebar · 70</div>
+  </aside>
+
+  <aside class="pane pane--sidebar">
+    <div class="pane__header">channel_sidebar <span class="w" id="w-sidebar">330</span></div>
+    <div class="pane__body sb-body">
+      <div class="sb-nav">
+        <div class="sb-nav-item active">홈</div>
+        <div class="sb-nav-item">DM</div>
+        <div class="sb-nav-item">내 활동</div>
+        <div class="sb-nav-item">파일</div>
+      </div>
+      <div class="sb-section-head">🧵 스레드</div>
+      <div class="sb-section-head">🎧 허들</div>
+      <div class="sb-section-head">📌 한눈에 정리</div>
+      <div class="sb-group-label">design</div>
+      <div class="sb-channel"># alarm-git-pr-design-platform</div>
+      <div class="sb-channel"># chapter-design</div>
+      <div class="sb-channel"># division-ai-pd</div>
+      <div class="sb-channel"># division-ep-pd</div>
+      <div class="sb-channel"># tf-ep-fx2</div>
+      <div class="sb-group-label">ep</div>
+      <div class="sb-channel"># division-ep</div>
+      <div class="sb-group-label">mini</div>
+      <div class="sb-channel"># alarm-mini</div>
+      <div class="sb-channel"># squad-mini</div>
+      <div class="sb-group-label">notice</div>
+      <div class="sb-channel"># general</div>
+    </div>
+  </aside>
+
+  <div class="resizer resizer--sidebar" data-target="sidebar"></div>
+
+  <section class="pane pane--main">
+    <div class="pane__header">message_pane <span class="w" id="w-main">—</span></div>
+    <div class="pane__body">
+      <p style="margin:0 0 12px">남는 공간. flexpane 열림 + 뷰포트 부족 시 takeover 발생 (effective min 300)</p>
+
+      <div class="msg-list">
+        <div class="msg">
+          <div class="msg__head"><b>김우근</b> · 오전 9:45</div>
+          <div class="msg__text">슬랙에서 리니어 호출해서 이슈 생성하듯 특정 유저봇 호출해서 디자인 위키 md 누적할 수 있음 좋겠네요</div>
+          <button class="reply-btn" data-open="thread">💬 7개의 댓글</button>
+        </div>
+        <div class="msg">
+          <div class="msg__head"><b>박성완</b> · 오전 9:47</div>
+          <div class="msg__text">근대 정말 리니어 처럼 쓰려면 토큰 api는 필요하겠네요</div>
+          <button class="reply-btn" data-open="thread">💬 3개의 댓글</button>
+        </div>
+        <div class="msg">
+          <div class="msg__head"><b>김신영</b> · 오전 10:45</div>
+          <div class="msg__text">fx 2 질문 &gt;&gt;</div>
+          <button class="reply-btn" data-open="thread">💬 28개의 댓글</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="resizer resizer--flex" data-target="flexpane"></div>
+
+  <aside class="pane pane--flex">
+    <div class="pane__header">
+      <button class="back" aria-label="back">←</button>
+      <span>flexpane</span>
+      <span class="w" id="w-flex">723</span>
+      <button class="close-flex" aria-label="close">✕</button>
+    </div>
+    <div class="pane__body">300 ~ 1000 · 기본 723<br><br>message_pane의 댓글 버튼을 눌러 열림</div>
+  </aside>
+</main>
+
+<div class="info" id="info">vw: — · main: —</div>
+
+<script>
+(() => {
+  const ws = document.getElementById('workspace');
+  const info = document.getElementById('info');
+  const state = {
+    sidebar: 330,
+    flexpane: 723,
+    flexOpen: false,
+    takeover: false,
+  };
+  const MIN = { sidebar: 180, flexpane: 300 };
+  const MAX = { sidebar: 450, flexpane: 1000 };
+  const SIDEBAR_DEFAULT = 330;
+  const MAIN_MIN = 300;
+  const TAB_RAIL = 70, RESIZER = 8;
+
+  // 뷰포트 의존 계산: 현재 vw에서 flexpane이 가질 수 있는 실효 max
+  const effectiveFlexMax = () => {
+    // flexpane max = min(hard 1000, vw - tab_rail - sidebar_user - 2*resizer - main_min)
+    const roomForFlex = window.innerWidth - TAB_RAIL - state.sidebar - 2 * RESIZER - MAIN_MIN;
+    return Math.max(MIN.flexpane, Math.min(MAX.flexpane, roomForFlex));
+  };
+
+  // 뷰포트 의존 계산: 현재 vw에서 sidebar가 가질 수 있는 실효 max
+  const effectiveSidebarMax = () => {
+    // sidebar max = min(hard 450, vw - tab_rail - resizer - main_min - (flexpane 차지분))
+    const flexSpace = state.flexOpen ? (RESIZER + state.flexpane) : 0;
+    const roomForSidebar = window.innerWidth - TAB_RAIL - RESIZER - MAIN_MIN - flexSpace;
+    return Math.max(MIN.sidebar, Math.min(MAX.sidebar, roomForSidebar));
+  };
+
+  const clampFlexToViewport = () => {
+    // 뷰포트가 좁아지면 flexpane이 hard max보다 작은 실효 max로 clamp
+    const eff = effectiveFlexMax();
+    if (state.flexpane > eff) state.flexpane = eff;
+  };
+  // 주의: sidebar는 뷰포트 변화에 auto-clamp하지 않음.
+  // viewport가 좁아져도 현재 sidebar 폭은 유지되고, 드래그 max만 바뀜.
+
+  const applyGrid = () => {
+    // flexpane이 열려 있으면 먼저 뷰포트에 맞춰 줄인다.
+    // (저장된 폭이 커도 main이 300을 확보할 수 있으면 shrink로 대응)
+    if (state.flexOpen) clampFlexToViewport();
+
+    // flex를 min(300)까지 줄여도 main이 300을 확보 못 하면 takeover
+    const mainSpace = window.innerWidth - TAB_RAIL - state.sidebar - RESIZER
+                      - (state.flexOpen ? (RESIZER + state.flexpane) : 0);
+    state.takeover = state.flexOpen && mainSpace < MAIN_MIN;
+
+    ws.classList.toggle('flexpane-closed', !state.flexOpen);
+    ws.classList.toggle('takeover', state.takeover);
+    ws.style.setProperty('--sidebar', state.sidebar + 'px');
+    ws.style.setProperty('--flexpane', state.flexpane + 'px');
+    document.getElementById('w-sidebar').textContent = state.sidebar;
+    document.getElementById('w-flex').textContent = state.flexpane;
+    document.getElementById('w-main').textContent = state.takeover ? 'takeover' : Math.max(0, mainSpace);
+
+    const effFlex = effectiveFlexMax();
+    const effSb = effectiveSidebarMax();
+    info.textContent =
+      `vw: ${window.innerWidth}` +
+      ` · main: ${state.takeover ? 'takeover' : Math.max(0, mainSpace) + 'px'}` +
+      ` · sidebar drag: ${MIN.sidebar}~${effSb}${effSb < MAX.sidebar ? ' ↓softcap' : ''}` +
+      ` · flex drag: ${MIN.flexpane}~${effFlex}${effFlex < MAX.flexpane ? ' ↓softcap' : ''}`;
+  };
+
+  // Drag resize
+  document.querySelectorAll('.resizer').forEach(res => {
+    const target = res.dataset.target;
+    res.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      res.setPointerCapture(e.pointerId);
+      ws.classList.add('is-dragging');
+      const startX = e.clientX;
+      let startW = state[target];
+
+      // narrow 상태 판별: 현재 sidebar 폭이 뷰포트 기준 실효 max를 초과하면 narrow
+      // 이 상태에서 드래그 시작 시 sidebar가 곧바로 MIN(180)으로 snap
+      if (target === 'sidebar' && state.sidebar > effectiveSidebarMax()) {
+        state.sidebar = MIN.sidebar;
+        startW = MIN.sidebar;
+        applyGrid();
+      }
+
+      const onMove = (ev) => {
+        let delta = ev.clientX - startX;
+        if (target === 'flexpane') delta = -delta; // flexpane grows by moving left
+        let nextW = startW + delta;
+        if (target === 'sidebar') {
+          // hard max 450, 뷰포트 무관 (drag 시작 시의 narrow snap 외에는 max 450 고정)
+          nextW = Math.max(MIN.sidebar, Math.min(MAX.sidebar, nextW));
+        } else {
+          // 뷰포트 의존: hard max 1000 + soft max(vw - 고정영역 - main_min)
+          const softMax = Math.min(MAX.flexpane, effectiveFlexMax());
+          nextW = Math.max(MIN.flexpane, Math.min(softMax, nextW));
+        }
+        state[target] = nextW;
+        applyGrid();
+      };
+      const onUp = () => {
+        ws.classList.remove('is-dragging');
+        res.removeEventListener('pointermove', onMove);
+        res.removeEventListener('pointerup', onUp);
+      };
+      res.addEventListener('pointermove', onMove);
+      res.addEventListener('pointerup', onUp);
+    });
+  });
+
+  // 메시지의 댓글 버튼 클릭 시 flexpane 열림
+  document.querySelectorAll('.reply-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.flexOpen = true;
+      applyGrid();
+    });
+  });
+
+  // flexpane 닫기 (X 버튼)
+  document.querySelector('.close-flex').addEventListener('click', () => {
+    state.flexOpen = false;
+    applyGrid();
+  });
+
+  // takeover 상태일 때 뒤로가기 (← 버튼)
+  document.querySelector('.back').addEventListener('click', () => {
+    state.flexOpen = false;
+    applyGrid();
+  });
+
+  window.addEventListener('resize', () => {
+    clampFlexToViewport();
+    // sidebar는 뷰포트 변화에 반응 X — 드래그 max만 동적으로 바뀜
+    applyGrid();
+  });
+  applyGrid();
+})();
+</script>
+</body>
+</html>

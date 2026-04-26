@@ -1,0 +1,2667 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>flex (fx2) Layout Prototype</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root {
+    --navbar: 220px;
+    --navbar-min: 180px;
+    --navbar-max: 260px;
+    --navbar-folded: 46px;      /* folded 시 세로 고정 버튼 영역 */
+    --floating-navbar-w: 220px; /* floating 기본 폭 (resize 가능, min 180 max 260) */
+
+    --page-header: 46px;
+    --local-sidebar: 220px;       /* min 180 / default 220 / max 360 */
+    --end-panel: 260px;
+    --side-min: 180px;
+    --side-max: 360px;
+    --sheet: 680px;
+    --fold-break: 1280;
+
+    --bg-primary: #ffffff;
+    --bg-secondary: #fbfbfb;
+    --bg-page: #f2f2f4;
+    --border-primary: rgba(0,0,0,.04);
+    --border-secondary: rgba(0,0,0,.06);
+    --border-tertiary: rgba(0,0,0,.08);
+    --text: #2c2c2c;
+    --text-weak: #6c6c74;
+    --text-dim: #9a9aa2;
+    --accent: #0066ff;
+
+    --shadow-dialog:
+      0 4px 12px rgba(0,0,0,.02),
+      0 14px 60px rgba(0,0,0,.08),
+      0 0 2px rgba(0,0,0,.08);
+
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif; color: var(--text); overflow: hidden; background: var(--bg-page); font-size: 13px; }
+
+  /* ─── 바깥 프레임 ─── */
+  .app-root {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-page);
+  }
+
+  /* ─── 공통 region — 텍스트 라벨만 (배경/테두리 없음) ─── */
+  .region {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-weak);
+    letter-spacing: 0;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .region .accent {
+    color: var(--accent);
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* ─── Screen (브라우저 header 제외한 나머지) ─── */
+  .screen {
+    flex: 1; min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    position: relative;
+  }
+
+  /* ─── AppShell ─── */
+  .app-shell {
+    flex: 1; min-height: 0;
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  /* ─── AppNavBar (globalSidebar) ─── */
+  .app-navbar {
+    position: relative;
+    width: var(--navbar);
+    min-width: var(--navbar-min);
+    max-width: var(--navbar-max);
+    background: #f6f6f6;
+    border-right: 0;
+    box-shadow: inset -1px 0 0 rgba(0,0,0,.08);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    transition: width 180ms ease, min-width 180ms ease, max-width 180ms ease;
+  }
+  body.navbar-dragging .app-navbar { transition: none; }
+  .app-navbar__header {
+    height: 46px;
+    padding: 7px 8px 7px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .app-navbar__thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    background: linear-gradient(135deg, #4ade80, #16a34a);
+    flex-shrink: 0;
+  }
+  .app-navbar__title {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: -0.1px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+  .app-navbar__title-arrow {
+    width: 10px;
+    height: 10px;
+    color: var(--text-weak);
+    fill: currentColor;
+    flex-shrink: 0;
+  }
+  .app-navbar__title .size {
+    margin-left: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--accent);
+    vertical-align: middle;
+  }
+  .fold-btn {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    color: var(--text-weak);
+    padding: 0;
+    transition: background 120ms, color 120ms;
+  }
+  .fold-btn:hover { background: rgba(0,0,0,.04); color: var(--text); }
+  .fold-btn .ico { display: block; }
+  /* 펼침 상태 → panel-left-close 아이콘 / 접힘 상태 → panel-left-open 아이콘 */
+  body:not(.folded) .fold-btn .ico-open { display: none; }
+  body.folded .fold-btn .ico-close { display: none; }
+
+  /* 공용 아이콘 (fx Design System fill-based) */
+  .ico {
+    width: 16px; height: 16px;
+    fill: currentColor;
+    stroke: none;
+  }
+  .ico-fx { fill: currentColor; stroke: none; } /* alias for backwards compat */
+  .ico-flip-x { transform: scaleX(-1); }
+  .app-navbar__body {
+    flex: 1; min-height: 0;
+    padding: 6px 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow-y: auto;
+  }
+  /* 메뉴 아이템 */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 120ms;
+    min-width: 0;
+  }
+  .nav-item:hover { background: rgba(0,0,0,.045); }
+  .nav-item.active { background: rgba(0,0,0,.07); font-weight: 500; }
+  .nav-item .ico {
+    flex-shrink: 0;
+    color: var(--text-weak);
+    stroke-width: 2;
+  }
+  .nav-item__label {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nav-item__sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: 4px;
+  }
+  .nav-item__badge {
+    background: #ff3b30;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .nav-item__more {
+    width: 20px; height: 20px;
+    border: 0;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-weak);
+    display: none;
+    place-items: center;
+    padding: 0;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .nav-item.active .nav-item__more,
+  .nav-item:hover .nav-item__more { display: grid; }
+  .nav-item__more:hover { background: rgba(0,0,0,.06); color: var(--text); }
+  .nav-item__avatar {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a0d8f0, #6ba4c9);
+    flex-shrink: 0;
+  }
+  /* 섹션 헤더 */
+  .nav-section__header {
+    padding: 14px 10px 4px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+  .nav-divider {
+    height: 1px;
+    background: rgba(0,0,0,.06);
+    margin: 8px 0;
+    flex-shrink: 0;
+  }
+  .nav-item--size .nav-item__label {
+    font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif;
+  }
+  /* 들여쓰기된 sub-item (그룹 메뉴 하위) — 부모 텍스트와 좌측 정렬 (icon 16 + gap 8 + padding 8 = 32) */
+  .nav-item.nav-item--sub {
+    padding-left: 32px;
+  }
+  .nav-item.nav-item--sub .ico { display: none; }
+  /* 그룹 메뉴 우측 chevron — 텍스트와 가까이, 작게 */
+  .nav-item__expand {
+    width: 12px; height: 12px;
+    flex-shrink: 0;
+    color: var(--text-dim);
+    fill: currentColor;
+    stroke: none;
+    pointer-events: none;
+    margin-left: -4px;
+  }
+  /* goals 메뉴 토글 — body.gnb-goals-expanded 가 set 되면 sub 보임 + chevron 전환 */
+  body:not(.gnb-goals-expanded) .gnb-goals-sub { display: none; }
+  body.gnb-goals-expanded [data-gnb="goals-parent"] .expand-collapsed,
+  body:not(.gnb-goals-expanded) [data-gnb="goals-parent"] .expand-expanded { display: none; }
+
+  /* Resize area (unfolded) */
+  .navbar-resizer {
+    position: absolute;
+    right: -4px; top: 0; bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 10;
+  }
+  .navbar-resizer::after {
+    content: "";
+    position: absolute;
+    right: 3px; top: 0; bottom: 0;
+    width: 2px;
+    background: transparent;
+    border-radius: 1px;
+    transition: background 120ms;
+  }
+  .navbar-resizer:hover::after,
+  .navbar-resizer.dragging::after { background: #aaa; }
+
+  /* ─── PageRoot — flex row: localSidebar | page-right (header + body) ─── */
+  .page-root {
+    flex: 1; min-width: 0;
+    display: flex;
+    align-items: stretch;
+    position: relative;
+  }
+  .page-right {
+    flex: 1; min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .page-header {
+    height: var(--page-header);
+    border-bottom: 1px solid var(--border-secondary);
+    padding: 7px 12px 7px 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    background: #fff;
+    box-sizing: border-box;
+  }
+  .page-header__title {
+    font-size: 13px;
+    color: var(--text);
+    letter-spacing: -0.1px;
+    font-weight: 500;
+  }
+  /* Breadcrumb (globalSidebar+localSidebar 모두 펼침 상태에서 page-header 에 표시) */
+  .page-header__breadcrumb {
+    display: none;
+    align-items: center;
+    gap: 0;
+    font-size: 13px;
+    color: var(--text);
+    letter-spacing: -0.1px;
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
+  }
+  .breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-weak);
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 0;
+    padding: 3px 6px;
+    border-radius: 5px;
+    transition: background 120ms, color 120ms;
+  }
+  .breadcrumb-item > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* 마지막 아이템(현재 페이지)은 우선 보이게, 중간 아이템부터 shrink */
+  .breadcrumb-item:last-of-type { flex-shrink: 0; }
+  .breadcrumb-item:last-child { color: var(--text); }
+  /* nav-item 과 동일한 hover 컬러 */
+  .breadcrumb-item:hover { background: rgba(0,0,0,.045); color: var(--text); }
+  .breadcrumb-item .ico { width: 14px; height: 14px; flex-shrink: 0; }
+  .breadcrumb-sep {
+    width: 10px; height: 11px;
+    color: var(--text-dim);
+    fill: currentColor;
+    flex-shrink: 0;
+  }
+  .breadcrumb-size {
+    margin-left: 4px;
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    letter-spacing: -0.1px;
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  /* 가로 스크롤로 page-header 가 max-content 폭 확보 → 별도 hide 미디어쿼리 불필요 */
+  /* localSidebar 모드 + LNB 접힘: page-header 좌측에 reopen 토글 표시 */
+  .page-header__lnb-reopen {
+    display: none;
+    position: relative;
+    width: 28px; height: 28px;
+    border: 0;
+    background: transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--text-weak);
+    place-items: center;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background 120ms, color 120ms;
+  }
+  .page-header__lnb-reopen:hover { background: rgba(0,0,0,.05); color: var(--text); }
+  body.header-lnb.no-local-sidebar .page-header__lnb-reopen,
+  body.header-lnb.local-auto-folded .page-header__lnb-reopen,
+  body.header-lnb.asides-hidden .page-header__lnb-reopen {
+    display: grid;
+  }
+  /* localSidebar 미사용(local-disabled) 시 reopen 버튼 모두 숨김 — fold 가 아니라 옵션 off */
+  body.local-disabled .page-header__lnb-reopen,
+  body.local-disabled .side-reopen.local { display: none !important; }
+  body.end-disabled .side-reopen.end { display: none !important; }
+  body.local-disabled .local-sidebar { display: none; }
+  body.end-disabled .end-panel { display: none; }
+
+  body.header-lnb.no-local-sidebar:not(.local-disabled) .page-header,
+  body.header-lnb.local-auto-folded:not(.local-disabled) .page-header,
+  body.header-lnb.asides-hidden:not(.local-disabled) .page-header { padding-left: 8px; }
+  /* GNB 접힘 + LNB 미사용 → fold-btn(7,7~39,39) 클리어 */
+  body.folded.local-disabled .page-header { padding-left: 48px; }
+  /* localSidebar 모드일 때 PageMain 의 side-reopen.local 는 숨김 (page-header 의 새 버튼으로 대체) */
+  body.header-lnb .side-reopen.local { display: none !important; }
+
+  /* localSidebar 모드 → 항상 브레드크럼 표시 (LNB 펼침/접힘/사라짐 모두) */
+  body.header-lnb .page-header > .page-header__title { display: none; }
+  body.header-lnb .page-header__breadcrumb[data-view="knowledge"] { display: inline-flex; }
+  body.header-lnb.local-view-goals .page-header__breadcrumb[data-view="knowledge"] { display: none; }
+  body.header-lnb.local-view-goals .page-header__breadcrumb[data-view="goals"] { display: inline-flex; }
+
+  /* GNB+LNB 모두 접힘 상태: 첫번째(menu) 와 두번째(panel-left) 아이콘 사이 구분선 */
+  body.folded.header-lnb.no-local-sidebar .page-header__lnb-reopen::before,
+  body.folded.header-lnb.local-auto-folded .page-header__lnb-reopen::before,
+  body.folded.header-lnb.asides-hidden .page-header__lnb-reopen::before,
+  body.folded.header-lnb.narrow .page-header__lnb-reopen::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 14px;
+    background: rgba(0,0,0,.1);
+  }
+  /* LNB 접힘 상태: panel-left 버튼과 브레드크럼 사이 구분선 (GNB 여부 무관) */
+  body.header-lnb.no-local-sidebar .page-header__lnb-reopen::after,
+  body.header-lnb.local-auto-folded .page-header__lnb-reopen::after,
+  body.header-lnb.asides-hidden .page-header__lnb-reopen::after,
+  body.header-lnb.narrow .page-header__lnb-reopen::after {
+    content: '';
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 14px;
+    background: rgba(0,0,0,.1);
+  }
+  /* divider 우측 여백을 좀 더 확보 — 버튼에 margin-right 추가 (구분선은 버튼 우측 -5px 고정) */
+  body.header-lnb.no-local-sidebar .page-header__lnb-reopen,
+  body.header-lnb.local-auto-folded .page-header__lnb-reopen,
+  body.header-lnb.asides-hidden .page-header__lnb-reopen,
+  body.header-lnb.narrow .page-header__lnb-reopen { margin-right: 6px; }
+  /* local-disabled 상태에서는 두번째 아이콘 자체가 없으므로 divider 숨김 */
+  body.local-disabled .page-header__lnb-reopen::before,
+  body.local-disabled .page-header__lnb-reopen::after { display: none; }
+  .page-header__toggle {
+    width: 28px; height: 28px;
+    border-radius: 5px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-weak);
+    display: grid; place-items: center;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background 120ms, color 120ms;
+  }
+  .page-header__toggle:hover { background: rgba(0,0,0,.05); color: var(--text); }
+  /* page-header 우측 endPanel 토글 (Figma endWrapper 위치) */
+  .page-header__end-toggle {
+    margin-left: auto;
+    width: 32px; height: 32px;
+    border: 0;
+    background: transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--text-weak);
+    display: none;
+    place-items: center;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background 120ms, color 120ms;
+  }
+  .page-header__end-toggle:hover { background: rgba(0,0,0,.05); color: var(--text); }
+  /* lnb 모드 + endPanel 사용중 → page-header 우측 끝에 토글 노출 */
+  body.header-lnb:not(.end-disabled) .page-header__end-toggle { display: grid; }
+  /* lnb 모드: PageMain 엣지의 side-reopen.end 와 endPanel 내부 side-toggle 은 숨김 (page-header 토글로 대체) */
+  body.header-lnb .side-reopen.end { display: none !important; }
+  body.header-lnb .end-panel .side-toggle { display: none; }
+
+  /* Start 모드(기본): page-header 가 절대위치로 전체 폭 (localSidebar 위까지 덮음) */
+  body:not(.header-lnb) .page-header {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    width: auto;
+    z-index: 2;
+  }
+  body:not(.header-lnb) .page-right,
+  body:not(.header-lnb) .local-sidebar {
+    padding-top: var(--page-header);
+  }
+  body:not(.header-lnb) .local-sidebar .side-toggle {
+    top: calc(var(--page-header) + 8px);
+  }
+  /* AppNavBar 접힘 시 fold 버튼(32x32 @ 7,7)이 page-header 좌측과 겹치는 경우 타이틀 영역을 밀어줌
+     - panel 모드: page-header 가 절대위치로 전체 폭이므로 항상 fold 버튼과 겹침
+     - localSidebar 모드: localSidebar 가 숨겨져 page-right 가 좌측 끝부터 시작할 때 겹침 */
+  body.folded:not(.header-lnb) .page-header,
+  body.folded.header-lnb.no-local-sidebar .page-header,
+  body.folded.header-lnb.local-auto-folded .page-header,
+  body.folded.header-lnb.asides-hidden .page-header { padding-left: 48px; }
+  /* localSidebar 모드: page-header 는 page-right 안의 자연스러운 flex child (localSidebar 옆) */
+  /* Aside 접기 버튼 — 각 aside 내부 PageMain 쪽 상단 모서리 */
+  .side-toggle {
+    position: absolute;
+    top: 8px;
+    width: 28px; height: 28px;
+    border: 0;
+    background: transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--text-weak);
+    display: grid; place-items: center;
+    padding: 0;
+    z-index: 5;
+    transition: background 120ms, color 120ms;
+  }
+  .side-toggle:hover { background: rgba(0,0,0,.05); color: var(--text); }
+  /* localSidebar 안: 우측 상단 (PageMain 쪽 엣지) */
+  .local-sidebar .side-toggle { right: 8px; }
+  /* endPanel 안: 좌측 상단 (PageMain 쪽 엣지) */
+  .end-panel .side-toggle { left: 8px; }
+
+  /* Aside 펼치기 버튼 — aside 가 숨겨졌을 때 PageMain 의 해당 방향 엣지에 노출 */
+  .side-reopen {
+    position: absolute;
+    top: 8px;
+    width: 28px; height: 28px;
+    border: 0;
+    background: transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--text-weak);
+    display: none;
+    place-items: center;
+    padding: 0;
+    z-index: 20;
+    transition: background 120ms, color 120ms;
+  }
+  .side-reopen:hover { background: rgba(0,0,0,.05); color: var(--text); }
+  .side-reopen.local { left: 8px; }
+  .side-reopen.end { right: 8px; }
+  body.no-local-sidebar .side-reopen.local,
+  body.local-auto-folded .side-reopen.local,
+  body.asides-hidden .side-reopen.local { display: grid; }
+  body.no-end-panel .side-reopen.end,
+  body.asides-hidden .side-reopen.end { display: grid; }
+  .page-container {
+    flex: 1; min-height: 0;
+    min-width: 0;
+    display: flex;
+    align-items: stretch;
+    position: relative;
+  }
+  .local-sidebar,
+  .end-panel {
+    min-width: var(--side-min);
+    max-width: var(--side-max);
+    flex-shrink: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .local-sidebar {
+    width: var(--local-sidebar);
+    border-right: 1px solid var(--border-secondary);
+  }
+  .end-panel {
+    width: var(--end-panel);
+    border-left: 1px solid var(--border-secondary);
+  }
+  .local-sidebar .region,
+  .end-panel .region { width: 100%; height: 100%; padding: 8px; }
+  /* localSidebar content containers — localSidebar / panel 모드별 분기 */
+  .local-sidebar__content {
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    width: 100%;
+    display: none;
+  }
+  .local-sidebar__content.panel { display: flex; padding: 8px; }
+  body.header-lnb .local-sidebar__content.lnb { display: none; }
+  body.header-lnb .local-sidebar__content.panel { display: none; }
+  /* localSidebar view 토글 — body.local-view-{view} 가 set 되면 해당 view 만 보임 (default knowledge) */
+  body.header-lnb.local-view-knowledge .local-sidebar__content[data-view="knowledge"],
+  body.header-lnb:not(.local-view-goals) .local-sidebar__content[data-view="knowledge"] { display: flex; }
+  body.header-lnb.local-view-goals .local-sidebar__content[data-view="goals"] { display: flex; }
+  body.header-lnb.local-view-goals .local-sidebar__content[data-view="knowledge"] { display: none; }
+
+  /* end-panel view 토글 — knowledge default, goals 시 동일 organisation tree 노출 */
+  .end-panel__content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+  .end-panel__content[data-view="goals"] { display: none; }
+  body.local-view-goals .end-panel__content[data-view="knowledge"] { display: none; }
+  body.local-view-goals .end-panel__content[data-view="goals"] { display: flex; }
+
+  /* tree row indent (data-depth 0~3) */
+  .nav-tree__row { padding-left: 8px; gap: 4px; }
+  .nav-tree__row[data-depth="1"] { padding-left: 24px; }
+  .nav-tree__row[data-depth="2"] { padding-left: 44px; }
+  .nav-tree__row[data-depth="3"] { padding-left: 64px; }
+  .nav-tree__chevron { width: 10px; height: 10px; flex-shrink: 0; color: var(--text-dim); fill: currentColor; margin-right: 2px; }
+
+  /* localSidebar search box (goals view) */
+  .ls-search {
+    display: flex; align-items: center; gap: 6px;
+    margin: 0 0 6px;
+    padding: 6px 8px;
+    background: rgba(0,0,0,.04);
+    border-radius: 6px;
+  }
+  .ls-search .ico { width: 14px; height: 14px; color: var(--text-dim); flex-shrink: 0; }
+  .ls-search input {
+    flex: 1; min-width: 0;
+    border: 0; outline: none; background: transparent;
+    font: inherit; font-size: 13px; color: var(--text);
+  }
+  .ls-search input::placeholder { color: var(--text-dim); }
+
+  /* nav-item pill (예: "주조직" 같은 보조 라벨) */
+  .nav-item__pill {
+    margin-left: auto;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-weak);
+    background: rgba(0,0,0,.05);
+    border-radius: 3px;
+  }
+  /* localSidebar 메뉴 영역 */
+  .local-sidebar__menu {
+    flex: 1;
+    min-height: 0;
+    padding: 6px 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  /* localSidebar 모드 헤더 — page-header 와 동일한 스타일 */
+  .local-sidebar__lnb-header {
+    height: var(--page-header);
+    padding: 7px 12px 7px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    background: #fff;
+  }
+  .local-sidebar__lnb-header .page-header__title {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .local-sidebar__lnb-header .size {
+    margin-left: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--accent);
+    vertical-align: middle;
+  }
+  /* globalSidebar 접힘 + localSidebar 모드: fold 버튼(7,7)이 localSidebar 헤더 좌측과 겹침 → 여백 확보 */
+  body.folded.header-lnb .local-sidebar__lnb-header { padding-left: 48px; }
+  /* globalSidebar 접힘 시 localSidebar 타이틀 숨김 (Figma 레퍼런스) */
+  body.folded.header-lnb .local-sidebar__lnb-header .page-header__title { display: none; }
+  body.local-dragging .local-sidebar,
+  body.end-dragging .end-panel { transition: none; }
+
+  /* Aside resize handles — localSidebar는 우측 엣지, endPanel는 좌측 엣지 */
+  .side-resizer {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 5;
+  }
+  .side-resizer.local { right: -4px; }
+  .side-resizer.end { left: -4px; }
+  .side-resizer::after {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: transparent;
+    border-radius: 1px;
+    transition: background 120ms;
+  }
+  .side-resizer.local::after { right: 3px; }
+  .side-resizer.end::after { left: 3px; }
+  .side-resizer:hover::after,
+  .side-resizer.dragging::after { background: #aaa; }
+  /* Option B: narrow-vw 에서 localSidebar 도 inline 유지 → 리사이저 활성 (auto-fold 폐기됨) */
+
+  .page-main {
+    flex: 1; min-width: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    overflow: auto;
+  }
+  .page-main .region { display: none; }
+  /* Page main 문서 리스트 UI */
+  .pm-toolbar {
+    padding: 14px 20px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .pm-toolbar__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    letter-spacing: -0.2px;
+  }
+  .pm-toolbar__title .ico { width: 18px; height: 18px; flex-shrink: 0; color: var(--text-weak); }
+  .pm-filter-row {
+    padding: 4px 20px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .pm-filter-btn {
+    height: 28px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border-tertiary);
+    border-radius: 6px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .pm-filter-btn .ico { width: 12px; height: 12px; color: var(--text-weak); }
+  .pm-filter-btn:hover { background: rgba(0,0,0,.02); }
+  .pm-spacer { flex: 1; }
+  .pm-table-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 0;
+  }
+  /* localView 별 main table 토글 (knowledge default, goals 시 다른 테이블 노출) */
+  .pm-table-wrap[data-view="goals"] { display: none; }
+  body.local-view-goals .pm-table-wrap[data-view="knowledge"] { display: none; }
+  body.local-view-goals .pm-table-wrap[data-view="goals"] { display: flex; flex-direction: column; }
+
+  /* Goals table — 행높이 40, 행간 보더 없음, 트리 들여쓰기, 사이클 pill */
+  .pm-table.pm-table--goals tbody td { height: 40px; border-bottom: 0 !important; }
+  /* th 하단 라인 — 행간 보더가 없으니 더 진하게 보이는 시각 효과 보정 (--border-primary) */
+  .pm-table.pm-table--goals thead th { border-bottom: 1px solid var(--border-primary); }
+  .pm-table--goals .pm-goals__caret {
+    width: 24px;
+    text-align: center;
+    color: var(--text-dim);
+    padding: 0;
+  }
+  .pm-table--goals .pm-goals__caret .ico { width: 10px; height: 10px; vertical-align: middle; }
+  .pm-table--goals .pm-goals__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+  }
+  .pm-table--goals .pm-goals__title .ico { width: 14px; height: 14px; color: var(--text-dim); flex-shrink: 0; }
+  .pm-table--goals .pm-goals__avatar {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #d8d8d8;
+    flex-shrink: 0;
+  }
+  /* 트리 들여쓰기 — depth 별 첫 컬럼(caret) 의 padding-left 증가 */
+  .pm-table--goals tbody tr[data-goals-depth="0"] .pm-goals__caret { padding-left: 16px; }
+  .pm-table--goals tbody tr[data-goals-depth="1"] .pm-goals__caret { padding-left: 36px; }
+  .pm-table--goals tbody tr[data-goals-depth="2"] .pm-goals__caret { padding-left: 56px; }
+  .pm-table--goals tbody tr[data-goals-depth="3"] .pm-goals__caret { padding-left: 76px; }
+  .pm-cycle {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(0,0,0,.05);
+    color: var(--text);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .pm-table thead th:first-child,
+  .pm-table tbody td:first-child { padding-left: 16px; }
+  .pm-table thead th:last-child,
+  .pm-table tbody td:last-child { padding-right: 16px; }
+  .pm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .pm-table thead th {
+    height: 40px;
+    padding: 0 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-secondary);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-weak);
+    background: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    white-space: nowrap;
+  }
+  .pm-table tbody td {
+    height: 40px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--border-primary);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .pm-table tbody tr { cursor: pointer; }
+  .pm-table tbody tr:hover { background: rgba(0,0,0,.02); }
+  .pm-doc-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pm-doc-title .ico { width: 14px; height: 14px; color: var(--text-weak); }
+  /* fx DS tag tokens (Figma getLocalVariables 로 resolved) */
+  .pm-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-right: 4px;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+  .pm-tag--yellow { background: rgba(217,133,6,0.18);  color: #6c3e22; }
+  .pm-tag--red    { background: rgba(220,52,18,0.18);  color: #842218; }
+  .pm-tag--green  { background: rgba(19,159,73,0.18);  color: #386a3a; }
+  .pm-tag--purple { background: rgba(154,94,231,0.18); color: #68488c; }
+  .pm-tag--blue   { background: rgba(37,111,207,0.18); color: #3d4f79; }
+  .pm-tag--gray   { background: rgba(132,132,132,0.18); color: #535353; }
+  .pm-tag--pink   { background: rgba(221,75,145,0.18); color: #884060; }
+  /* alias: 기존 클래스 호환 */
+  .pm-tag--orange { background: rgba(217,133,6,0.18);  color: #6c3e22; }
+  .pm-tag--more {
+    background: transparent;
+    color: var(--text-weak);
+    padding: 1px 2px;
+  }
+  .pm-cat {
+    display: inline-block;
+    color: var(--text-weak);
+    font-size: 12px;
+  }
+  .pm-assignee {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .pm-assignee__avatar {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #d1d5db;
+    flex-shrink: 0;
+  }
+  .pm-date {
+    font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif;
+    font-size: 12px;
+    color: var(--text-weak);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+  .pm-toggle {
+    display: inline-block;
+    width: 26px; height: 14px;
+    border-radius: 8px;
+    background: #d1d5db;
+    position: relative;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background 120ms;
+  }
+  .pm-toggle::after {
+    content: '';
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    top: 2px; left: 2px;
+    transition: left 120ms;
+  }
+  .pm-toggle.on { background: #22c55e; }
+  .pm-toggle.on::after { left: 14px; }
+  .pm-checkbox {
+    width: 14px; height: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    display: inline-block;
+    vertical-align: middle;
+    cursor: pointer;
+  }
+  .pm-more-btn {
+    width: 22px; height: 22px;
+    border: 0;
+    background: transparent;
+    color: var(--text-weak);
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0;
+    display: inline-grid;
+    place-items: center;
+  }
+  .pm-table tr:hover .pm-more-btn { opacity: 1; }
+  .pm-more-btn:hover { background: rgba(0,0,0,.06); }
+  .pm-more-btn .ico { width: 14px; height: 14px; }
+  /* asides-hidden 시점: page-main 이 viewport 보다 넓어져 reopen 버튼이 밖으로 밀리는 걸 방지 */
+  body.asides-hidden .page-main { min-width: 0; }
+
+  /* narrow-vw 에서 localSidebar 자동 접힘 — 단, 사용자가 직접 조절한 경우엔 유지 */
+  body.local-auto-folded .local-sidebar { display: none; }
+  /* asides-hidden: cascade 2단계 — 둘 다 완전히 숨김 */
+  body.asides-hidden .local-sidebar,
+  body.asides-hidden .end-panel { display: none; }
+
+  /* narrow mutex 모드: 사이드 visibility 는 no-local-sidebar / no-end-panel 로 자동 처리됨
+     (apply() 에서 isLocalVisible / isEndVisible 기반으로 토글) */
+  /* narrow 에서도 globalSidebar 접힘 시 hover 로 floating-navbar 노출 (wide 와 동일) */
+  /* narrow 에서 lnb-reopen 은 local 이 visible 일 땐 숨김 (이미 펼쳐져 있으니 redundant) */
+  body.narrow.narrow-show-local .page-header__lnb-reopen { display: none !important; }
+  /* narrow 에서 page-main 내부 콘텐츠가 좁으면 가로 스크롤 (pm-table-wrap 이 처리) */
+  body.narrow .pm-table-wrap { overflow-x: auto; }
+  body.narrow .pm-table { min-width: 600px; }
+  /* narrow 에서 lnb-reopen 은 항상 보임 (active 든 inactive 든 토글 액세스용) */
+  body.narrow.header-lnb:not(.local-disabled) .page-header__lnb-reopen { display: grid; }
+
+  /* ─── Sheet — 우측에서 슬라이드인, floating overlay (push 안 함) ─── */
+  .sheet {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sheet);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-dialog);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 50;
+    transform: translateX(100%);
+    transition: transform 220ms ease;
+  }
+  body.sheet-open .sheet {
+    transform: translateX(0);
+  }
+  /* Sheet takeover — 공통 (auto / manual 모두 적용) */
+  body.sheet-takeover .sheet {
+    position: fixed;
+    top: 0; bottom: 0;
+    transform: none;
+    z-index: 60;
+  }
+  body.sheet-takeover .sheet-resizer { display: none; }
+  /* AUTO takeover (vw 강제) — 풀 vw 덮음 (globalSidebar 포함) */
+  body.sheet-takeover-auto .sheet {
+    left: 0;
+    right: 0;
+    width: 100vw;
+  }
+  /* MANUAL takeover (사용자 expand) — globalSidebar 제외 영역 */
+  body.sheet-takeover-manual .sheet {
+    left: var(--navbar);
+    right: 0;
+    width: auto;
+  }
+  body.folded.sheet-takeover-manual .sheet {
+    left: 0;  /* GNB 접힘 시 풀 vw */
+  }
+  /* Sheet resize handle — 좌측 엣지, 왼쪽 drag = expand */
+  .sheet-resizer {
+    position: absolute;
+    left: -4px; top: 0; bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 5;
+  }
+  .sheet-resizer::after {
+    content: "";
+    position: absolute;
+    left: 3px; top: 0; bottom: 0;
+    width: 2px;
+    background: transparent;
+    border-radius: 1px;
+    transition: background 120ms;
+  }
+  .sheet-resizer:hover::after,
+  .sheet-resizer.dragging::after { background: #aaa; }
+  /* 슬라이드인 애니메이션 중엔 drag 방지 */
+  body:not(.sheet-open) .sheet-resizer { display: none; }
+  body.sheet-dragging .sheet { transition: none; }
+  .sheet__titlebar {
+    height: 46px;
+    padding: 0 9px;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .sheet__title {
+    font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    padding: 0 8px;
+    letter-spacing: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sheet__title-size {
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .sheet__spacer { flex: 1; }
+  /* fx IconButton (28x28, radius 8) — sheet titlebar 통일 */
+  .sheet__btn {
+    width: 28px; height: 28px;
+    border: 0; background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-weak);
+    display: grid; place-items: center;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background 120ms, color 120ms;
+  }
+  .sheet__btn:hover { background: rgba(0,0,0,.05); color: var(--text); }
+  .sheet__btn .ico { width: 16px; height: 16px; fill: currentColor; }
+  /* expand 아이콘 — takeover 상태에 따라 토글 */
+  .sheet__btn .ico-collapse { display: none; }
+  body.sheet-takeover .sheet__btn .ico-expand { display: none; }
+  body.sheet-takeover .sheet__btn .ico-collapse { display: block; }
+  /* viewport 에 의한 자동 takeover 일 때 expand 버튼 숨김 (사용자가 수동으로 줄일 수 없는 상태) */
+  body.sheet-takeover-auto #btn-sheet-expand,
+  body.sheet-takeover-auto #btn-sheet-expand + .sheet__sep { display: none !important; }
+  /* fx Separator — 1px x 16px, --border/tertiary */
+  .sheet__sep {
+    width: 1px; height: 16px;
+    background: rgba(0,0,0,.08);
+    margin: 0 6px;
+    flex-shrink: 0;
+  }
+  /* sheet 타이틀바 fold 버튼 — globalSidebar 접힘 + takeover 일 때만 노출 (Figma 8383-2717892) */
+  .sheet__fold-btn,
+  .sheet__fold-sep { display: none !important; }
+  body.folded.sheet-takeover .sheet__fold-btn { display: grid !important; }
+  body.folded.sheet-takeover .sheet__fold-sep { display: block !important; }
+
+  /* sheet 브레드크럼 — 기본 hide, takeover 일 때만 노출 (view 별 토글) */
+  .sheet__breadcrumb { display: none !important; }
+  body.sheet-takeover .sheet .sheet__title { display: none; }
+  body.sheet-takeover .sheet .sheet__breadcrumb[data-view="knowledge"] { display: inline-flex !important; }
+  body.sheet-takeover.local-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"] { display: none !important; }
+  body.sheet-takeover.local-view-goals .sheet .sheet__breadcrumb[data-view="goals"] { display: inline-flex !important; }
+  .sheet__body {
+    flex: 1; min-height: 0;
+    padding: 8px;
+    display: flex;
+  }
+  .sheet__body .region { width: 100%; height: 100%; }
+
+  /* ─── Folded state ─── */
+  /* folded = (viewport < 1280) OR (user-folded cookie)
+     접힘 시 AppNavBar는 flow 에서 완전히 빠지고, fold 버튼만 floating 으로 남음. */
+  body.folded .app-navbar {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0;
+    min-width: 0;
+    max-width: none;
+    border-right: 0;
+    background: transparent;
+    z-index: 30;
+    overflow: visible;
+  }
+  /* fold-btn 영역만 빠져나와 클릭 받게, 나머지 navbar 영역(width 0이라 안 보이지만)은 click 차단 */
+  body.folded #app-navbar > * { pointer-events: none; }
+  body.folded #app-navbar .app-navbar__header,
+  body.folded #app-navbar .app-navbar__header * { pointer-events: auto; }
+  /* fold-btn / floating fold-btn 명시적 클릭 가능 보장 */
+  #btn-fold, #btn-fold-floating { pointer-events: auto !important; cursor: pointer; }
+  /* 뷰포트 자동 takeover 일 때 floating navbar 의 fold 버튼 숨김 (vw 가 좁아 inline 펼침 불가) */
+  body.sheet-takeover-auto #btn-fold-floating { display: none !important; }
+  #btn-fold svg, #btn-fold use,
+  #btn-fold-floating svg, #btn-fold-floating use { pointer-events: none; }
+  body.folded #app-navbar .app-navbar__header {
+    position: absolute;
+    left: 7px; top: 7px;
+    height: 32px;
+    width: 32px;
+    padding: 0;
+    gap: 0;
+    pointer-events: auto;
+  }
+  body.folded #app-navbar .app-navbar__title { display: none; }
+  body.folded #app-navbar .app-navbar__thumb { display: none; }
+  body.folded #app-navbar > .app-navbar__body { display: none; }
+  body.folded .navbar-resizer { display: none; }
+
+  /* Floating AppNavBar — hover 시 왼쪽에서 slide-in overlay */
+  .floating-navbar {
+    position: absolute;
+    left: 7px;
+    top: 41px;
+    bottom: 7px;
+    width: var(--floating-navbar-w);
+    min-width: var(--navbar-min);
+    max-width: var(--navbar-max);
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 8px;
+    box-shadow: var(--shadow-dialog);
+    padding: 0;
+    display: none;
+    flex-direction: column;
+    z-index: 40;
+    overflow: hidden;
+  }
+  /* folded 상태일 때만 DOM 에 올리고, 기본은 화면 밖(left) 으로 치워둠 */
+  body.folded .floating-navbar {
+    display: flex;
+    opacity: 0;
+    transform: translateX(calc(-100% - 20px));
+    pointer-events: none;
+    transition:
+      opacity 160ms ease,
+      transform 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
+  }
+  .floating-navbar .app-navbar__header { height: 46px; padding: 7px 8px 7px 12px; }
+  .floating-navbar .app-navbar__body { padding: 6px 8px 12px; }
+  body.folded.floating-shown .floating-navbar {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+  /* sheet takeover 중에도 floating-navbar 가 sheet 위로 올라오게 z-index 끌어올림 */
+  body.sheet-takeover .floating-navbar { z-index: 70; }
+  /* 리사이즈 드래그 중엔 애니메이션 제거 (즉각 반영) */
+  body.floating-dragging .floating-navbar { transition: none; }
+  /* Floating navbar 의 resize area (우측 엣지) */
+  .floating-navbar-resizer {
+    position: absolute;
+    right: -4px; top: 0; bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 10;
+  }
+  .floating-navbar-resizer::after {
+    content: "";
+    position: absolute;
+    right: 3px; top: 0; bottom: 0;
+    width: 2px;
+    background: transparent;
+    border-radius: 1px;
+    transition: background 120ms;
+  }
+  .floating-navbar-resizer:hover::after,
+  .floating-navbar-resizer.dragging::after { background: #aaa; }
+
+  /* 숨김 처리 — toggle로 On/Off */
+  body.no-local-sidebar .local-sidebar { display: none; }
+  body.no-end-panel .end-panel { display: none; }
+
+  .info {
+    position: fixed;
+    left: 50%; bottom: 12px;
+    transform: translateX(-50%);
+    z-index: 500;
+    font-size: 10px; color: var(--text-weak);
+    background: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-tertiary);
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    max-width: calc(100vw - 24px);
+  }
+
+  /* 드래그 중 사이즈 툴팁 — 사이드바 size 뱃지와 동일 크기 (font 10px, no icon) */
+  .resize-tooltip {
+    position: fixed;
+    padding: 2px 6px;
+    background: var(--text);
+    color: #fff;
+    font-size: 10px;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 1000;
+    white-space: nowrap;
+    display: none;
+    align-items: center;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .resize-tooltip .ico { display: none; }
+  body.navbar-dragging .resize-tooltip.navbar,
+  body.floating-dragging .resize-tooltip.floating,
+  body.local-dragging .resize-tooltip.local,
+  body.end-dragging .resize-tooltip.end {
+    display: inline-flex;
+  }
+  /* sheet 툴팁 — 완전 삭제 (호버 시 stuck 버그 방지) */
+  .resize-tooltip.sheet { display: none !important; }
+
+  body.navbar-dragging, body.floating-dragging,
+  body.local-dragging, body.end-dragging, body.sheet-dragging {
+    cursor: col-resize; user-select: none;
+  }
+  body.navbar-dragging *, body.floating-dragging *,
+  body.local-dragging *, body.end-dragging *, body.sheet-dragging * {
+    cursor: col-resize !important; user-select: none !important;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-root" id="app-root">
+  <!-- Screen -->
+  <div class="screen">
+    <!-- AppShell -->
+    <div class="app-shell" id="app-shell">
+      <!-- SVG icon symbols (모두 Figma DS 에서 export 한 fx icon, fill-based) -->
+      <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+        <symbol id="i-menu" viewBox="0 0 24 24">
+          <path d="M3 6C3 5.44772 3.44772 5 4 5H20C20.5523 5 21 5.44772 21 6C21 6.55228 20.5523 7 20 7H4C3.44772 7 3 6.55228 3 6Z"/>
+          <path d="M3 12C3 11.4477 3.44772 11 4 11H20C20.5523 11 21 11.4477 21 12C21 12.5523 20.5523 13 20 13H4C3.44772 13 3 12.5523 3 12Z"/>
+          <path d="M4 17C3.44772 17 3 17.4477 3 18C3 18.5523 3.44772 19 4 19H20C20.5523 19 21 18.5523 21 18C21 17.4477 20.5523 17 20 17H4Z"/>
+        </symbol>
+        <symbol id="i-close" viewBox="0 0 24 24"><path d="M19.0711 4.92893C19.4616 5.31946 19.4616 5.95262 19.0711 6.34315L13.4142 12L19.0711 17.6569C19.4616 18.0474 19.4616 18.6805 19.0711 19.0711C18.6805 19.4616 18.0474 19.4616 17.6569 19.0711L12 13.4142L6.34315 19.0711C5.95262 19.4616 5.31946 19.4616 4.92893 19.0711C4.53841 18.6805 4.53841 18.0474 4.92893 17.6569L10.5858 12L4.92893 6.34315C4.53841 5.95262 4.53841 5.31946 4.92893 4.92893C5.31946 4.53841 5.95262 4.53841 6.34315 4.92893L12 10.5858L17.6569 4.92893C18.0474 4.53841 18.6805 4.53841 19.0711 4.92893Z"/></symbol>
+        <!-- fx icons (Figma DS 에서 export 한 실제 path, fill-based) -->
+        <symbol id="i-panel-left" viewBox="0 0 24 24">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M18.5 4C20.433 4 22 5.567 22 7.5V16.5C22 18.433 20.433 20 18.5 20H5.5C3.567 20 2 18.433 2 16.5V7.5C2 5.567 3.567 4 5.5 4H18.5ZM11 18H18.5C19.3284 18 20 17.3284 20 16.5V7.5C20 6.67157 19.3284 6 18.5 6H11V18ZM5.5 6C4.67157 6 4 6.67157 4 7.5V16.5C4 17.3284 4.67157 18 5.5 18H9V6H5.5Z"/>
+        </symbol>
+        <symbol id="i-magnifier" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M10 4C6.68629 4 4 6.68629 4 10C4 13.3137 6.68629 16 10 16C13.3137 16 16 13.3137 16 10C16 6.68629 13.3137 4 10 4ZM2 10C2 5.58172 5.58172 2 10 2C14.4183 2 18 5.58172 18 10C18 11.8487 17.3729 13.5509 16.3199 14.9056L21.7071 20.2929C22.0976 20.6834 22.0976 21.3166 21.7071 21.7071C21.3166 22.0976 20.6834 22.0976 20.2929 21.7071L14.9057 16.3198C13.551 17.3729 11.8487 18 10 18C5.58172 18 2 14.4183 2 10Z"/></symbol>
+        <symbol id="i-bell" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0001 3.5C11.2478 3.5 10.6379 4.10945 10.6379 4.86125C10.6379 5.04672 10.6747 5.22308 10.7416 5.38389C11.1546 5.31377 11.5759 5.278 12.0001 5.278C12.4242 5.278 12.8456 5.31377 13.2585 5.38389C13.3255 5.22308 13.3623 5.04672 13.3623 4.86125C13.3623 4.10945 12.7524 3.5 12.0001 3.5ZM15.1703 5.9864C15.2954 5.6345 15.3637 5.25564 15.3637 4.86125C15.3637 3.00488 13.8577 1.5 12.0001 1.5C10.1424 1.5 8.6365 3.00488 8.6365 4.86125C8.6365 5.25564 8.70472 5.6345 8.82984 5.9864C8.28899 6.24469 7.78491 6.57095 7.33475 6.96083C6.07169 8.05472 5.32847 9.57165 5.32847 11.1894C5.32847 13.1704 4.83927 14.5701 4.26561 15.5396L4.25547 15.5567C3.8837 16.185 3.59267 16.6769 3.39729 17.0303C3.29964 17.2069 3.21295 17.372 3.14961 17.5141C3.1182 17.5846 3.08307 17.6703 3.05555 17.7619C3.03518 17.8297 2.98382 18.0091 3.00517 18.2275C3.01646 18.3428 3.04278 18.5787 3.18058 18.8201C3.31837 19.0615 3.50818 19.2042 3.60177 19.2726C3.76021 19.3884 3.9183 19.4377 3.99587 19.4592C4.08774 19.4846 4.17649 19.4995 4.24919 19.5093C4.39455 19.5287 4.56277 19.5385 4.73635 19.5445C5.08234 19.5565 5.56552 19.5565 6.1724 19.5565H8.29575C8.73592 21.1888 10.2276 22.39 12.0001 22.39C13.7725 22.39 15.2642 21.1888 15.7044 19.5565H17.8277C18.4346 19.5565 18.9178 19.5565 19.2638 19.5445C19.4374 19.5385 19.6056 19.5287 19.751 19.5093C19.8237 19.4995 19.9124 19.4846 20.0043 19.4592C20.0819 19.4377 20.2399 19.3884 20.3984 19.2726C20.492 19.2042 20.6818 19.0615 20.8196 18.8201C20.9574 18.5787 20.9837 18.3428 20.995 18.2275C21.0163 18.0091 20.965 17.8297 20.9446 17.7619C20.9171 17.6703 20.882 17.5846 20.8505 17.5141C20.7872 17.372 20.7005 17.2069 20.6029 17.0303C20.4075 16.6768 20.1164 16.185 19.7447 15.5567L19.7345 15.5396C19.1609 14.5701 18.6717 13.1704 18.6717 11.1894C18.6717 9.57165 17.9285 8.05472 16.6654 6.96083C16.2152 6.57095 15.7112 6.24469 15.1703 5.9864ZM13.4156 7.46288C13.4282 7.46657 13.4409 7.47001 13.4536 7.47319C14.1728 7.67148 14.826 8.01441 15.3546 8.4722C16.2186 9.22044 16.6703 10.202 16.6703 11.1894C16.6703 13.5187 17.2508 15.2714 18.0118 16.5575C18.2474 16.9557 18.4423 17.2851 18.5991 17.5552C18.3745 17.5565 18.1115 17.5565 17.805 17.5565H6.19512C5.88862 17.5565 5.62561 17.5565 5.40101 17.5552C5.55789 17.2851 5.75278 16.9557 5.98836 16.5575C6.74938 15.2714 7.32985 13.5187 7.32985 11.1894C7.32985 10.202 7.78157 9.22044 8.64552 8.4722C9.17411 8.01441 9.82734 7.67148 10.5466 7.47319C10.5593 7.47001 10.5719 7.46657 10.5845 7.46288C11.0358 7.34205 11.5124 7.278 12.0001 7.278C12.4878 7.278 12.9644 7.34205 13.4156 7.46288ZM10.462 19.5565C10.7893 20.0583 11.3559 20.39 12.0001 20.39C12.6442 20.39 13.2108 20.0583 13.5382 19.5565H10.462Z"/></symbol>
+        <symbol id="i-house" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.5131 3.06561C12.1769 2.97813 11.8231 2.97813 11.4869 3.06561C11.0941 3.16778 10.7616 3.41853 10.4932 3.62091L10.419 3.67667L4.55777 7.80428C4.18266 8.08395 3.84909 8.33265 3.59958 8.6568C3.37985 8.94226 3.21473 9.26575 3.11391 9.61183C2.9988 10.007 2.99932 10.4213 2.9999 10.876L2.99998 16.9647C2.99996 17.4691 2.99994 17.9089 3.03082 18.2721C3.06361 18.6577 3.13646 19.0457 3.33449 19.4192C3.6276 19.9719 4.09123 20.414 4.65228 20.6887C5.02708 20.8722 5.41584 20.94 5.80812 20.9708C6.18108 21 6.63443 21 7.1626 21H16.8374C17.3655 21 17.8189 21 18.1918 20.9708C18.5841 20.94 18.9729 20.8722 19.3477 20.6887C19.9087 20.414 20.3724 19.9719 20.6655 19.4192C20.8635 19.0457 20.9364 18.6577 20.9691 18.2721C21 17.9089 21 17.4691 21 16.9647L21.0001 10.8761C21.0006 10.4213 21.0012 10.007 20.886 9.61183C20.7852 9.26575 20.6201 8.94226 20.4004 8.6568C20.1509 8.33265 19.8173 8.08395 19.4422 7.80428L13.5809 3.67667L13.5068 3.62091C13.2384 3.41853 12.9058 3.16778 12.5131 3.06561ZM11.9774 5.01754C11.9862 5.01184 11.9938 5.00719 12 5.00343C12.0062 5.00719 12.0137 5.01184 12.0226 5.01754C12.0978 5.06582 12.1968 5.13906 12.3836 5.27872L18.166 9.3474C18.6655 9.72072 18.7558 9.79914 18.8155 9.87673C18.8851 9.96714 18.9355 10.0671 18.9659 10.1712C18.9906 10.2562 19 10.3629 19 10.9734V16.9252C19 17.4805 18.9991 17.8344 18.9763 18.1027C18.9546 18.3581 18.9185 18.4446 18.8985 18.4822C18.8081 18.6527 18.6598 18.7986 18.4682 18.8924C18.4152 18.9184 18.31 18.9553 18.0353 18.9769C17.75 18.9993 17.3759 19 16.8 19H13V13H11V19H7.19998C6.62406 19 6.24993 18.9993 5.96465 18.9769C5.68992 18.9553 5.58474 18.9184 5.53171 18.8924C5.34012 18.7986 5.19182 18.6527 5.10144 18.4822C5.08149 18.4446 5.04535 18.3581 5.02363 18.1027C5.00082 17.8344 4.99998 17.4805 4.99998 16.9252V10.9734C4.99998 10.3629 5.00933 10.2562 5.0341 10.1712C5.06443 10.0671 5.11484 9.96714 5.18443 9.87673C5.24416 9.79914 5.33447 9.72072 5.834 9.3474L11.6163 5.27872C11.8032 5.13906 11.9022 5.06582 11.9774 5.01754Z"/></symbol>
+        <symbol id="i-pin" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.9436 1.81864C13.3722 1.53752 13.8944 1.43695 14.3967 1.53878C14.7786 1.61619 15.0686 1.82163 15.281 1.99862C15.4835 2.16744 15.7096 2.3936 15.9503 2.63434L20.8656 7.54966C21.1064 7.79038 21.3326 8.01651 21.5014 8.21905C21.6784 8.43137 21.8838 8.72143 21.9612 9.10328C22.0631 9.60562 21.9625 10.1279 21.6814 10.5565C21.4677 10.8822 21.1692 11.0753 20.926 11.2067C20.6941 11.332 20.4001 11.4579 20.0872 11.592L17.6942 12.6176L17.632 12.6443C17.6198 12.6496 17.6108 12.6536 17.6038 12.6567C17.6018 12.6587 17.5995 12.6608 17.5971 12.6633C17.5928 12.6675 17.5878 12.6724 17.5818 12.6783L17.5339 12.7261L16.0588 14.2012C16.028 14.232 16.0044 14.2557 15.984 14.2763C15.9693 14.2912 15.9583 14.3025 15.95 14.3112C15.9473 14.323 15.944 14.3384 15.9398 14.3589C15.9339 14.3873 15.9273 14.4201 15.9188 14.4628L15.2179 17.9675C15.1351 18.3815 15.0599 18.7574 14.9721 19.0532C14.8842 19.3491 14.7372 19.7408 14.4021 20.0381C13.9767 20.4155 13.4074 20.5879 12.8441 20.5098C12.4004 20.4483 12.0609 20.204 11.8235 20.0065C11.5863 19.8091 11.3153 19.5381 11.0168 19.2395L8.34577 16.5684L3.70711 21.2071C3.31658 21.5976 2.68342 21.5976 2.29289 21.2071C1.90237 20.8166 1.90237 20.1834 2.29289 19.7929L6.93156 15.1542L4.26054 12.4832C3.96197 12.1847 3.69093 11.9137 3.49357 11.6765C3.29608 11.4392 3.05177 11.0996 2.99025 10.6559C2.91216 10.0926 3.08452 9.52332 3.46198 9.09792C3.75929 8.76285 4.15091 8.61587 4.44688 8.52794C4.74265 8.44008 5.11849 8.36494 5.5325 8.28217L9.03721 7.58123C9.07989 7.57269 9.11272 7.56612 9.14116 7.56023C9.16167 7.55598 9.17699 7.55268 9.18879 7.55002C9.19755 7.54167 9.20879 7.53076 9.22371 7.51605C9.24438 7.49566 9.26806 7.47198 9.29884 7.44121L10.7739 5.96616L10.8217 5.91822C10.831 5.90879 10.838 5.90171 10.8433 5.89622C10.8464 5.88925 10.8504 5.88017 10.8557 5.868L10.8825 5.8058L11.908 3.41284C12.0421 3.09992 12.168 2.80594 12.2934 2.57398C12.4248 2.33079 12.6178 2.03232 12.9436 1.81864ZM14.033 3.56259C13.9603 3.70346 13.8727 3.90583 13.731 4.23645L12.7207 6.59364C12.7179 6.60038 12.7149 6.60734 12.7118 6.6145C12.6786 6.69238 12.6352 6.79392 12.5788 6.89265C12.5298 6.97837 12.4744 7.06024 12.413 7.13755C12.3423 7.22658 12.2641 7.30454 12.2042 7.36434C12.1986 7.36983 12.1933 7.37518 12.1881 7.38037L10.7131 8.85542C10.7049 8.86355 10.6965 8.87197 10.6879 8.88063C10.5948 8.97417 10.4734 9.09612 10.329 9.19682C10.2037 9.28415 10.0687 9.35644 9.92656 9.41218C9.76268 9.47646 9.59385 9.50985 9.46437 9.53546C9.45238 9.53783 9.44072 9.54013 9.42944 9.54239L5.9665 10.235C5.53114 10.3221 5.2555 10.3781 5.06071 10.4324C5.19265 10.5856 5.39092 10.7851 5.70487 11.0991L12.4009 17.7952C12.7149 18.1091 12.9144 18.3074 13.0676 18.4393C13.122 18.2445 13.178 17.9689 13.265 17.5335L13.9576 14.0706C13.9599 14.0593 13.9622 14.0477 13.9646 14.0357C13.9902 13.9062 14.0236 13.7374 14.0878 13.5735C14.1436 13.4314 14.2159 13.2963 14.3032 13.1711C14.4039 13.0267 14.5258 12.9053 14.6194 12.8121C14.628 12.8035 14.6365 12.7951 14.6446 12.787L16.1196 11.3119C16.1248 11.3067 16.1302 11.3014 16.1357 11.2959C16.1955 11.2359 16.2734 11.1577 16.3625 11.087C16.4398 11.0256 16.5216 10.9702 16.6074 10.9212C16.7061 10.8648 16.8076 10.8215 16.8855 10.7882C16.8927 10.7852 16.8996 10.7822 16.9064 10.7793L19.2636 9.76906C19.5942 9.62737 19.7965 9.53975 19.9374 9.46706C19.8336 9.34726 19.6783 9.19075 19.4239 8.9364L14.5636 4.07609C14.3093 3.82175 14.1528 3.66639 14.033 3.56259Z"/></symbol>
+        <symbol id="i-smile-face" viewBox="0 0 24 24"><path d="M9.30002 7.84998C8.49921 7.84998 7.85002 8.49916 7.85002 9.29998C7.85002 10.1008 8.49921 10.75 9.30002 10.75C10.1008 10.75 10.75 10.1008 10.75 9.29998C10.75 8.49916 10.1008 7.84998 9.30002 7.84998Z"/><path d="M14.7 7.84998C13.8992 7.84998 13.25 8.49916 13.25 9.29998C13.25 10.1008 13.8992 10.75 14.7 10.75C15.5008 10.75 16.15 10.1008 16.15 9.29998C16.15 8.49916 15.5008 7.84998 14.7 7.84998Z"/><path d="M9.19667 13.1955L9.19978 13.1995C9.20457 13.2055 9.21415 13.2175 9.2284 13.2344C9.25696 13.2685 9.30385 13.3223 9.3681 13.3893C9.49743 13.5243 9.69221 13.7078 9.94444 13.8912C10.4528 14.2609 11.1506 14.6 12 14.6C12.8495 14.6 13.5473 14.2609 14.0556 13.8912C14.3078 13.7078 14.5026 13.5243 14.6319 13.3893C14.6962 13.3223 14.7431 13.2685 14.7716 13.2344L14.788 13.2148L14.8003 13.1995L14.8034 13.1955C15.1356 12.7576 15.7597 12.6697 16.2 13C16.6418 13.3313 16.7314 13.9581 16.4 14.4L16.399 14.4013L16.3979 14.4028L16.3952 14.4063L16.3883 14.4153L16.3684 14.4409C16.3523 14.4612 16.3307 14.4879 16.3036 14.5202C16.2495 14.5846 16.1734 14.6714 16.0759 14.7731C15.8818 14.9757 15.5985 15.2422 15.2319 15.5087C14.5028 16.039 13.4006 16.6 12 16.6C10.5995 16.6 9.49729 16.039 8.7681 15.5087C8.40158 15.2422 8.11823 14.9757 7.92413 14.7731C7.82666 14.6714 7.7505 14.5846 7.69645 14.5202C7.66939 14.4879 7.64777 14.4612 7.63169 14.4409L7.6117 14.4153L7.60482 14.4063L7.60216 14.4028L7.60103 14.4013L7.60002 14.4C7.26865 13.9581 7.35819 13.3313 7.80002 13C8.24036 12.6697 8.86444 12.7576 9.19667 13.1955Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM4 12C4 7.58172 7.58172 4 12 4C16.4183 4 20 7.58172 20 12C20 16.4183 16.4183 20 12 20C7.58172 20 4 16.4183 4 12Z"/></symbol>
+        <symbol id="i-message-2" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.58114 10.2C5.58114 5.67003 9.25786 2 13.7906 2C18.3233 2 22 5.67003 22 10.2C22 11.2214 21.8126 12.2013 21.4693 13.1058C21.4388 13.1864 21.4205 13.2346 21.4079 13.2698C21.4108 13.2968 21.4154 13.3345 21.4231 13.3979L21.7868 16.3672C21.8034 16.5029 21.823 16.6623 21.8277 16.802C21.8329 16.9574 21.827 17.207 21.7069 17.4707C21.5584 17.797 21.2939 18.0576 20.9634 18.2005C20.6958 18.3161 20.4447 18.3164 20.2891 18.3075C20.1496 18.2995 19.9909 18.2761 19.8565 18.2562C19.8477 18.2549 19.839 18.2536 19.8305 18.2523L16.9787 17.8321C16.9407 17.8265 16.9111 17.8222 16.8854 17.8185C16.8717 17.8166 16.8604 17.815 16.851 17.8138C16.8153 17.8265 16.7663 17.8449 16.6859 17.8752C15.7842 18.2147 14.8079 18.4 13.7906 18.4C13.6533 18.4 13.5167 18.3966 13.381 18.3899C12.4978 20.5027 10.454 22 8.04191 22C7.37776 22 6.73788 21.8853 6.1414 21.6737C6.04684 21.6402 5.98861 21.6195 5.94617 21.6054C5.91847 21.6088 5.88012 21.614 5.81724 21.6226L3.13603 21.9907C2.81207 22.0352 2.48684 21.9185 2.26509 21.6782C2.04334 21.4378 1.95309 21.1043 2.02341 20.7849L2.57074 18.2994C2.58676 18.2267 2.59625 18.1833 2.60257 18.1519C2.58822 18.1042 2.56702 18.0388 2.53202 17.9311C2.33941 17.3384 2.23562 16.7055 2.23562 16.05C2.23562 13.676 3.60115 11.6026 5.59344 10.6522C5.58527 10.5024 5.58114 10.3516 5.58114 10.2ZM19.45 12.8468C19.4808 12.7072 19.5388 12.5551 19.5851 12.4338C19.5901 12.4209 19.5948 12.4084 19.5995 12.3963C19.858 11.7149 20 10.9752 20 10.2C20 6.77707 17.2212 4 13.7906 4C10.3873 4 7.62546 6.733 7.58167 10.1183C7.73342 10.1062 7.8869 10.1 8.04191 10.1C11.2762 10.1 13.8482 12.7919 13.8482 16.05C13.8482 16.1674 13.8449 16.284 13.8383 16.3998C14.5939 16.3942 15.3153 16.2542 15.9812 16.0035C15.9936 15.9988 16.0066 15.9939 16.0198 15.9888C16.1445 15.9416 16.3023 15.8818 16.4474 15.8511C16.5792 15.8233 16.693 15.8111 16.8277 15.8103C16.9756 15.8095 17.1254 15.8319 17.2381 15.8487C17.2492 15.8504 17.2599 15.852 17.2703 15.8535L19.7537 16.2194L19.438 13.641C19.4367 13.6309 19.4354 13.6205 19.4341 13.6097C19.4204 13.4997 19.4024 13.355 19.4057 13.2126C19.4088 13.0828 19.422 12.9736 19.45 12.8468ZM8.04191 12.1C5.96732 12.1 4.23562 13.8405 4.23562 16.05C4.23562 16.4936 4.30573 16.9179 4.43411 17.313C4.43931 17.329 4.4447 17.3455 4.45022 17.3623C4.49996 17.5143 4.55979 17.6972 4.584 17.8523C4.60655 17.9968 4.61205 18.1095 4.60365 18.2555C4.59468 18.4115 4.55911 18.5714 4.53185 18.6939C4.52912 18.7062 4.52647 18.7181 4.52395 18.7295L4.2851 19.8142L5.54522 19.6412C5.55553 19.6398 5.56624 19.6383 5.57729 19.6367C5.68722 19.6214 5.83197 19.6013 5.97146 19.6022C6.10246 19.6031 6.20168 19.6133 6.33013 19.639C6.46755 19.6666 6.63063 19.7248 6.7659 19.7731C6.78102 19.7785 6.79579 19.7837 6.81014 19.7888C7.19548 19.9255 7.60938 20 8.04191 20C9.77579 20 11.2702 18.7842 11.7142 17.095C11.7184 17.0767 11.723 17.0587 11.7281 17.0409C11.8064 16.7251 11.8482 16.3932 11.8482 16.05C11.8482 13.8405 10.1165 12.1 8.04191 12.1Z"/></symbol>
+        <symbol id="i-target" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M18.4601 2.01291C18.7774 2.0644 19.0506 2.26528 19.1944 2.55278L19.9453 4.05464L21.4472 4.80557C21.7347 4.94932 21.9356 5.22252 21.987 5.53981C22.0385 5.85711 21.9344 6.17981 21.7071 6.4071L19.0071 9.1071C18.8195 9.29464 18.5652 9.4 18.3 9.4H16.0142L12.7071 12.7071C12.3166 13.0976 11.6834 13.0976 11.2929 12.7071C10.9023 12.3165 10.9023 11.6834 11.2929 11.2928L14.6 7.98578V5.7C14.6 5.43478 14.7053 5.18043 14.8929 4.99289L17.5929 2.29289C17.8201 2.0656 18.1429 1.96142 18.4601 2.01291ZM16.6 7.4H17.8857L19.3118 5.97395L18.7527 5.69442C18.5592 5.59766 18.4023 5.44074 18.3055 5.24721L18.026 4.68816L16.6 6.11421V7.4ZM12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 11.4477 20.4477 11 21 11C21.5523 11 22 11.4477 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C12.5523 2 13 2.44771 13 3C13 3.55228 12.5523 4 12 4ZM12 8.5C10.067 8.5 8.5 10.067 8.5 12C8.5 13.933 10.067 15.5 12 15.5C13.933 15.5 15.5 13.933 15.5 12C15.5 11.4477 15.9477 11 16.5 11C17.0523 11 17.5 11.4477 17.5 12C17.5 15.0376 15.0376 17.5 12 17.5C8.96243 17.5 6.5 15.0376 6.5 12C6.5 8.96243 8.96243 6.5 12 6.5C12.5523 6.5 13 6.94771 13 7.5C13 8.05228 12.5523 8.5 12 8.5Z"/></symbol>
+        <symbol id="i-stopwatch" viewBox="0 0 24 24"><path d="M12 8.5C12.5523 8.5 13 8.94772 13 9.5V12.9338L15.0145 14.1425C15.4881 14.4267 15.6416 15.0409 15.3575 15.5145C15.0733 15.9881 14.4591 16.1416 13.9855 15.8575L11.4855 14.3575C11.1843 14.1768 11 13.8513 11 13.5V9.5C11 8.94772 11.4477 8.5 12 8.5Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M9 2C9 1.44772 9.44772 1 10 1H14C14.5523 1 15 1.44772 15 2C15 2.55228 14.5523 3 14 3H13V4.052C17.7767 4.5517 21.5 8.59103 21.5 13.5C21.5 18.7467 17.2467 23 12 23C6.75329 23 2.5 18.7467 2.5 13.5C2.5 8.59103 6.22334 4.5517 11 4.052V3H10C9.44772 3 9 2.55228 9 2ZM12 6C7.85786 6 4.5 9.35786 4.5 13.5C4.5 17.6421 7.85786 21 12 21C16.1421 21 19.5 17.6421 19.5 13.5C19.5 9.35786 16.1421 6 12 6Z"/><path d="M5.87813 3.38493C6.26865 3.77546 6.26865 4.40862 5.87813 4.79915L5.12813 5.54915L4.37813 6.29915C3.9876 6.68967 3.35444 6.68967 2.96391 6.29915C2.57339 5.90862 2.57339 5.27546 2.96391 4.88493L3.71381 4.13504L4.46391 3.38493C4.85444 2.99441 5.4876 2.99441 5.87813 3.38493Z"/><path d="M18.1219 3.38493C18.5124 2.99441 19.1456 2.99441 19.5361 3.38493L21.0361 4.88493C21.4266 5.27546 21.4266 5.90862 21.0361 6.29915C20.6456 6.68967 20.0124 6.68967 19.6219 6.29915L18.1219 4.79915C17.7313 4.40862 17.7313 3.77546 18.1219 3.38493Z"/></symbol>
+        <symbol id="i-banknote" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.5443 6.07173C10.0868 6.52377 8.55144 7 7.00001 7C5.9728 7 5.05445 6.89085 4.27915 6.74188C3.75131 6.64047 3.39967 6.57333 3.14638 6.53985C3.09648 6.53325 3.05516 6.52865 3.02121 6.52551C3.01903 6.54751 3.01685 6.5734 3.01484 6.60359C3.00054 6.81883 3.00001 7.11984 3.00001 7.58885L3.00001 18.3373C3.00001 18.3744 3.00004 18.3983 3.00031 18.4168C3.00252 18.4203 3.00482 18.4239 3.00717 18.4275C3.00951 18.4311 3.01184 18.4346 3.01413 18.4381C3.5354 18.6589 4.71281 19 7.00001 19C8.83704 19 10.4616 18.5425 12.0809 18.0442C12.2053 18.006 12.3302 17.9672 12.4557 17.9283C13.9132 17.4762 15.4486 17 17 17C18.0272 17 18.9456 17.1091 19.7209 17.2581C20.2487 17.3595 20.6003 17.4267 20.8536 17.4602C20.9035 17.4668 20.9449 17.4714 20.9788 17.4745C20.981 17.4525 20.9832 17.4266 20.9852 17.3964C20.9995 17.1812 21 16.8802 21 16.4111V5.66274C21 5.62557 21 5.60174 20.9997 5.58315C20.9975 5.57965 20.9952 5.57608 20.9928 5.57247C20.9905 5.56888 20.9882 5.56536 20.9859 5.56194C20.4646 5.34105 19.2872 5 17 5C15.163 5 13.5384 5.45754 11.9191 5.95578C11.7948 5.99404 11.6698 6.03279 11.5443 6.07173ZM11.3309 4.04422C12.9616 3.54246 14.837 3 17 3C19.5455 3 21.016 3.38891 21.8357 3.7505C21.8381 3.75155 21.8407 3.7527 21.8436 3.75396C21.8869 3.77295 21.9863 3.81648 22.0953 3.88804C22.2065 3.961 22.2994 4.04322 22.3808 4.12094C22.5068 4.24114 22.6121 4.39405 22.6683 4.4803C22.7245 4.56656 22.8219 4.72464 22.8811 4.88838C23.0001 5.21806 23.0001 5.45216 23 5.6493L23 16.445C23 16.8704 23 17.2391 22.9808 17.529C22.9628 17.7996 22.9222 18.178 22.7274 18.5118C22.6214 18.6936 22.4831 18.8856 22.2801 19.0533C22.0771 19.221 21.8624 19.3206 21.6639 19.3905C21.2852 19.5238 20.871 19.4798 20.5915 19.4429C20.273 19.4008 19.8631 19.322 19.375 19.2282L19.3435 19.2222C18.6772 19.0942 17.8858 19 17 19C15.7654 19 14.5142 19.3863 12.9736 19.8619C12.8734 19.8928 12.7719 19.9242 12.6691 19.9558C11.0384 20.4575 9.16298 21 7.00001 21C4.45447 21 2.98405 20.6111 2.1643 20.2495C2.16193 20.2485 2.15931 20.2473 2.15643 20.246C2.11309 20.2271 2.01375 20.1835 1.90469 20.112C1.7935 20.039 1.70064 19.9568 1.61921 19.8791C1.49326 19.7589 1.38794 19.606 1.33171 19.5197C1.27548 19.4334 1.17809 19.2754 1.11895 19.1116C0.999866 18.7819 0.99994 18.5478 1 18.3507L1.00001 7.55506C0.999992 7.12959 0.99998 6.76088 1.01924 6.471C1.03722 6.2004 1.07777 5.82202 1.27256 5.48818C1.37861 5.30643 1.51696 5.11439 1.71995 4.94669C1.92293 4.77899 2.13763 4.67936 2.33612 4.60951C2.71485 4.47624 3.129 4.52015 3.40848 4.55709C3.72704 4.5992 4.13697 4.67797 4.62507 4.77177L4.65652 4.77781C5.3228 4.90583 6.11417 5 7.00001 5C8.23458 5 9.48584 4.61372 11.0264 4.13813C11.1266 4.10718 11.2281 4.07585 11.3309 4.04422ZM18 8C18.5523 8 19 8.44771 19 9V13C19 13.5523 18.5523 14 18 14C17.4477 14 17 13.5523 17 13V9C17 8.44771 17.4477 8 18 8ZM12 10.5C11.1716 10.5 10.5 11.1716 10.5 12C10.5 12.8284 11.1716 13.5 12 13.5C12.8284 13.5 13.5 12.8284 13.5 12C13.5 11.1716 12.8284 10.5 12 10.5ZM8.50001 12C8.50001 10.067 10.067 8.5 12 8.5C13.933 8.5 15.5 10.067 15.5 12C15.5 13.933 13.933 15.5 12 15.5C10.067 15.5 8.50001 13.933 8.50001 12ZM6.00001 10C6.55229 10 7.00001 10.4477 7.00001 11V15C7.00001 15.5523 6.55229 16 6.00001 16C5.44772 16 5.00001 15.5523 5.00001 15V11C5.00001 10.4477 5.44772 10 6.00001 10Z"/></symbol>
+        <symbol id="i-signature" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M5.56732 5.1422C6.19594 4.95999 6.71017 4.96131 7.12961 5.09835C7.53925 5.23218 7.95618 5.52694 8.34527 6.1122C8.87791 6.91337 9.32048 8.20411 9.56293 10.1403C7.93721 10.9173 6.28801 12.3516 5.07105 13.8974C4.37374 14.7831 3.78451 15.7474 3.41578 16.7048C3.37822 16.8023 3.34257 16.9008 3.30912 17H3C2.44772 17 2 17.4477 2 18C2 18.5523 2.44772 19 3 19H3.01195C3.02728 19.2161 3.06073 19.4305 3.11496 19.6416C3.66807 21.7945 6.13044 22.5119 8.10293 21.6146C9.13137 21.1468 10.0395 20.2813 10.694 19H21C21.5523 19 22 18.5523 22 18C22 17.4477 21.5523 17 21 17H11.4151C11.6393 16.0618 11.7634 14.9884 11.7634 13.7766C11.7634 12.955 11.7401 12.1835 11.6938 11.4612C12.4897 11.1894 13.0843 11.0242 13.5255 10.9354C13.7519 10.8899 13.9187 10.8688 14.038 10.86C14.0354 10.9421 14.0325 11.0423 14.0325 11.1148C14.0325 11.2638 13.997 11.5519 13.9322 11.9716C13.9157 12.079 13.8974 12.1935 13.8786 12.3116C13.8308 12.6115 13.7793 12.9348 13.7422 13.2218C13.7158 13.4255 13.6935 13.6329 13.6838 13.8235C13.675 13.997 13.6721 14.2277 13.7165 14.4467C13.7384 14.5542 13.7858 14.7345 13.9065 14.9143C14.043 15.1176 14.2918 15.3399 14.662 15.3929C14.9925 15.4403 15.2537 15.3269 15.3927 15.2484C15.5387 15.166 15.6544 15.0637 15.7378 14.9807C16.459 14.2631 17.4431 13.3832 18.342 12.7138C18.7544 12.4067 19.1265 12.1608 19.4324 11.9955C19.4208 12.0435 19.408 12.0942 19.394 12.1477C19.3752 12.2191 19.3492 12.3134 19.3213 12.4144C19.2786 12.5691 19.2315 12.7397 19.1998 12.8671C19.1441 13.091 19.0728 13.4106 19.0843 13.7191C19.0959 14.0326 19.2244 14.6739 19.9083 14.9278C20.4044 15.112 20.907 14.9503 21.2091 14.8316C21.5744 14.688 22.0111 14.4521 22.5281 14.1306C22.9971 13.8389 23.1408 13.2223 22.8492 12.7533C22.5575 12.2843 21.9409 12.1405 21.4719 12.4322C21.4368 12.454 21.4025 12.4752 21.3692 12.4955C21.4228 12.2772 21.4738 12.0322 21.4969 11.7886C21.5244 11.5001 21.527 11.0868 21.34 10.6908C21.1207 10.2262 20.711 9.92951 20.2122 9.82612C19.8795 9.75716 19.5646 9.81168 19.3313 9.87661C19.0854 9.94504 18.8399 10.051 18.6087 10.1691C18.1459 10.4055 17.6411 10.7422 17.1475 11.1098C16.7473 11.4077 16.3368 11.7394 15.9387 12.0796C15.988 11.7455 16.0325 11.3904 16.0325 11.1148C16.0325 11.0509 16.0341 11.0083 16.0361 10.954C16.0379 10.9082 16.0399 10.8541 16.0416 10.7719C16.0443 10.6368 16.0442 10.4452 16.011 10.2439C15.9768 10.0374 15.9009 9.77584 15.7195 9.5277C15.53 9.26855 15.2723 9.08827 14.9795 8.9817C14.4547 8.79077 13.817 8.83682 13.1313 8.97469C12.6772 9.06599 12.1341 9.21289 11.4838 9.42325C11.2016 7.5148 10.7076 6.0531 10.0108 5.00493C9.41522 4.10908 8.65551 3.49284 7.75071 3.19724C6.85572 2.90484 5.91773 2.95831 5.01051 3.22128C2.97362 3.8117 1.90204 5.77202 1.411 7.38998C1.15529 8.23253 1.02484 9.07788 1.00324 9.78676C0.992463 10.1404 1.00806 10.4819 1.05788 10.7847C1.1021 11.0534 1.19315 11.4251 1.42607 11.7264C1.76386 12.1633 2.3919 12.2437 2.82884 11.9059C3.24471 11.5844 3.33758 11 3.05434 10.5677C3.049 10.5491 3.04033 10.5146 3.03134 10.46C3.00812 10.3188 2.99425 10.1122 3.00231 9.84768C3.01838 9.32029 3.11879 8.64962 3.3248 7.9708C3.75722 6.54601 4.53252 5.44215 5.56732 5.1422ZM9.34801 17C9.60275 16.157 9.7634 15.0974 9.7634 13.7766C9.7634 13.2655 9.75388 12.7812 9.73562 12.3226C8.66268 12.9822 7.54107 13.9932 6.6425 15.1345C6.15076 15.7591 5.74758 16.396 5.46363 17H9.34801ZM5.02282 19C5.03052 19.0502 5.0403 19.0982 5.05205 19.1439C5.20665 19.7456 6.08423 20.3357 7.27476 19.7941C7.60488 19.644 7.9638 19.39 8.30364 19H5.02282Z"/></symbol>
+        <symbol id="i-text-book" viewBox="0 0 24 24"><path d="M12.25 10.0996C12.8022 10.0996 13.2498 10.5475 13.25 11.0996C13.25 11.6519 12.8023 12.0996 12.25 12.0996H8.5C7.94772 12.0996 7.5 11.6519 7.5 11.0996C7.5002 10.5475 7.94784 10.0996 8.5 10.0996H12.25Z"/><path d="M15.5 6.5C16.0523 6.5 16.5 6.94771 16.5 7.5C16.5 8.05227 16.0523 8.5 15.5 8.5H8.5C7.94772 8.5 7.50001 8.05227 7.5 7.5C7.5 6.94771 7.94772 6.5 8.5 6.5H15.5Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M20 2C20.5523 2 21 2.44772 21 3V21C21 21.5523 20.5523 22 20 22H6.5C5.60376 22 4.72598 21.6802 4.06348 21.084C3.39752 20.4846 3 19.648 3 18.75V5.25C3 4.35202 3.39752 3.51539 4.06348 2.91602C4.72598 2.31976 5.60376 2 6.5 2H20ZM6.5 17.5C6.0702 17.5 5.67654 17.6547 5.40137 17.9023C5.12966 18.1469 5 18.4545 5 18.75C5 19.0455 5.12966 19.3531 5.40137 19.5977C5.67654 19.8453 6.0702 20 6.5 20H19V17.5H6.5ZM6.5 4C6.0702 4 5.67654 4.15472 5.40137 4.40234C5.12966 4.64688 5 4.95452 5 5.25V15.8125C5.46832 15.6067 5.98119 15.5 6.5 15.5H19V4H6.5Z"/></symbol>
+        <symbol id="i-chevron-2-left" viewBox="0 0 24 24"><path d="M11.0002 12.0113C11.0002 12.2761 11.1056 12.5301 11.2931 12.7174L18.2933 19.7077C18.6838 20.0976 19.3168 20.0975 19.7074 19.7077C20.0979 19.3177 20.0978 18.6855 19.7074 18.2956L13.4143 12.0113L19.7074 5.72709C20.0979 5.33713 20.0978 4.70498 19.7074 4.31499C19.3168 3.92501 18.6838 3.92501 18.2933 4.31499L11.2931 11.3053L11.2267 11.3784C11.0809 11.5561 11.0002 11.7796 11.0002 12.0113ZM3.22461 11.3589C2.90425 11.7511 2.92685 12.3293 3.29297 12.6949L10.2931 19.6852C10.6836 20.0752 11.3167 20.0752 11.7072 19.6852C12.0977 19.2952 12.0977 18.6631 11.7072 18.2731L5.41411 11.9889L11.7072 5.70466C12.0977 5.31468 12.0977 4.68254 11.7072 4.29256C11.3167 3.90258 10.6836 3.90258 10.2931 4.29256L3.29297 11.2828L3.22461 11.3589Z"/></symbol>
+        <!-- combination-chevron 시리즈 (fx 디자인 시스템의 컴팩트 chevron — 10~11px) -->
+        <symbol id="i-chevron-up" viewBox="0 0 11 10"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.67353 6.66427L8.825 7.5128L5.49926 4.18706L2.17353 7.5128L1.325 6.66427L5.49926 2.49001L9.67353 6.66427Z"/></symbol>
+        <!-- arrow-left-and-arrow-right (양방향 스왑 아이콘, fill-based) -->
+        <symbol id="i-arrow-left-and-arrow-right" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M16.293 3.293a1 1 0 0 1 1.414 0l5 5a1 1 0 0 1 0 1.414l-5 5a1 1 0 1 1-1.414-1.414L19.586 10H4a1 1 0 1 1 0-2h15.586l-3.293-3.293a1 1 0 0 1 0-1.414zM7.707 13.293a1 1 0 0 1 0 1.414L4.414 18H20a1 1 0 1 1 0 2H4.414l3.293 3.293a1 1 0 0 1-1.414 1.414l-5-5a1 1 0 0 1 0-1.414l5-5a1 1 0 0 1 1.414 0z" transform="translate(0 -2)"/></symbol>
+        <symbol id="i-chevron-down" viewBox="0 0 11 10"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.325 3.33853L2.17353 2.49001L5.49926 5.81574L8.825 2.49001L9.67353 3.33853L5.49926 7.5128L1.325 3.33853Z"/></symbol>
+        <symbol id="i-chevron-right" viewBox="0 0 10 11"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.33853 9.67354L2.49 8.82501L5.81574 5.49928L2.49 2.17354L3.33853 1.32501L7.51279 5.49928L3.33853 9.67354Z"/></symbol>
+        <symbol id="i-ellipsis-h" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+        <symbol id="i-expand-2directions" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M14 4a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0V6.41l-3.79 3.8a1 1 0 1 1-1.42-1.42L17.59 5H15a1 1 0 0 1-1-1zM3 15a1 1 0 0 1 1 1v2.59l3.79-3.8a1 1 0 1 1 1.42 1.42L5.41 20H8a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z"/></symbol>
+        <symbol id="i-collapse-2directions" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M20.71 3.29a1 1 0 0 1 0 1.42L16.91 8.5h2.59a1 1 0 1 1 0 2h-5a1 1 0 0 1-1-1v-5a1 1 0 1 1 2 0v2.59l3.79-3.8a1 1 0 0 1 1.42 0zM3.29 20.71a1 1 0 0 1 0-1.42l3.8-3.79H4.5a1 1 0 1 1 0-2h5a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0v-2.59l-3.79 3.8a1 1 0 0 1-1.42 0z"/></symbol>
+        <!-- localSidebar 카테고리용 아이콘 -->
+        <symbol id="i-apps" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+        <symbol id="i-questionmark" viewBox="0 0 24 24"><path d="M11.543 15.4195C10.8332 15.4195 10.4339 14.978 10.4339 14.32V13.8612C10.4339 12.3982 11.3922 11.4373 12.7409 10.537C13.9565 9.74056 14.6752 9.1086 14.6752 7.92261C14.6752 6.53751 13.4419 5.66317 11.8625 5.66317C10.5581 5.66317 9.54658 6.22587 9.10293 7.70619C8.93434 8.18232 8.55279 8.468 8.02928 8.468C7.37267 8.468 7 8.06112 7 7.4638C7 7.10887 7.08873 6.70199 7.28394 6.29512C8.04703 4.67629 9.8394 3.75 11.9601 3.75C14.8083 3.75 17 5.28227 17 7.9053C17 9.56742 16.0683 10.7188 14.5155 11.723C13.0692 12.6493 12.661 13.1081 12.6167 14.1642C12.6078 14.2421 12.6078 14.3374 12.6078 14.4239C12.5634 15.0212 12.2085 15.4195 11.543 15.4195ZM11.5519 20.25C10.7533 20.25 10.1056 19.6267 10.1056 18.8562C10.1056 18.0771 10.7533 17.4625 11.5519 17.4625C12.3594 17.4625 13.0071 18.0771 13.0071 18.8562C13.0071 19.6267 12.3594 20.25 11.5519 20.25Z"/></symbol>
+        <symbol id="i-trendarrow-up" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M15 8C14.4477 8 14 7.55228 14 7C14 6.44772 14.4477 6 15 6H22C22.5523 6 23 6.44772 23 7V14C23 14.5523 22.5523 15 22 15C21.4477 15 21 14.5523 21 14V9.41421L14.8159 15.5983C14.6375 15.7768 14.4637 15.9506 14.3045 16.0858C14.1296 16.2342 13.9078 16.3938 13.618 16.4879C13.2163 16.6184 12.7837 16.6184 12.382 16.4879C12.0922 16.3938 11.8704 16.2342 11.6955 16.0858C11.5363 15.9506 11.3625 15.7768 11.1841 15.5983L8.42426 12.8385C8.21459 12.6288 8.09931 12.5146 8.01013 12.4389C8.00658 12.4359 8.00321 12.4331 8 12.4304C7.99679 12.4331 7.99342 12.4359 7.98987 12.4389C7.90069 12.5146 7.78541 12.6288 7.57574 12.8385L2.70711 17.7071C2.31658 18.0976 1.68342 18.0976 1.29289 17.7071C0.902369 17.3166 0.902369 16.6834 1.29289 16.2929L6.16152 11.4243C6.16904 11.4167 6.17656 11.4092 6.18406 11.4017C6.36251 11.2232 6.53629 11.0494 6.69551 10.9142C6.87036 10.7658 7.09225 10.6062 7.38197 10.5121C7.78365 10.3816 8.21635 10.3816 8.61803 10.5121C8.90775 10.6062 9.12964 10.7658 9.30449 10.9142C9.46371 11.0494 9.63749 11.2232 9.81594 11.4017L12.5757 14.1615C12.7854 14.3712 12.9007 14.4854 12.9899 14.5611C12.9934 14.5641 12.9968 14.5669 13 14.5696C13.0032 14.5669 13.0066 14.5641 13.0101 14.5611C13.0993 14.4854 13.2146 14.3712 13.4243 14.1615L19.5858 8H15Z"/></symbol>
+        <symbol id="i-grid" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M6 3C4.34315 3 3 4.34315 3 6V8.5C3 10.1569 4.34315 11.5 6 11.5H8.5C10.1569 11.5 11.5 10.1569 11.5 8.5V6C11.5 4.34315 10.1569 3 8.5 3H6ZM5 6C5 5.44772 5.44772 5 6 5H8.5C9.05228 5 9.5 5.44772 9.5 6V8.5C9.5 9.05228 9.05228 9.5 8.5 9.5H6C5.44772 9.5 5 9.05228 5 8.5V6Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M6 12.5C4.34315 12.5 3 13.8431 3 15.5V18C3 19.6569 4.34315 21 6 21H8.5C10.1569 21 11.5 19.6569 11.5 18V15.5C11.5 13.8431 10.1569 12.5 8.5 12.5H6ZM5 15.5C5 14.9477 5.44772 14.5 6 14.5H8.5C9.05228 14.5 9.5 14.9477 9.5 15.5V18C9.5 18.5523 9.05228 19 8.5 19H6C5.44772 19 5 18.5523 5 18V15.5Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 6C12.5 4.34315 13.8431 3 15.5 3H18C19.6569 3 21 4.34315 21 6V8.5C21 10.1569 19.6569 11.5 18 11.5H15.5C13.8431 11.5 12.5 10.1569 12.5 8.5V6ZM15.5 5C14.9477 5 14.5 5.44772 14.5 6V8.5C14.5 9.05228 14.9477 9.5 15.5 9.5H18C18.5523 9.5 19 9.05228 19 8.5V6C19 5.44772 18.5523 5 18 5H15.5Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M15.5 12.5C13.8431 12.5 12.5 13.8431 12.5 15.5V18C12.5 19.6569 13.8431 21 15.5 21H18C19.6569 21 21 19.6569 21 18V15.5C21 13.8431 19.6569 12.5 18 12.5H15.5ZM14.5 15.5C14.5 14.9477 14.9477 14.5 15.5 14.5H18C18.5523 14.5 19 14.9477 19 15.5V18C19 18.5523 18.5523 19 18 19H15.5C14.9477 19 14.5 18.5523 14.5 18V15.5Z"/></symbol>
+        <symbol id="i-person-badge-pen" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C9.37665 2 7.25 4.12665 7.25 6.75C7.25 9.37335 9.37665 11.5 12 11.5C14.6234 11.5 16.75 9.37335 16.75 6.75C16.75 4.12665 14.6234 2 12 2ZM9.25 6.75C9.25 5.23122 10.4812 4 12 4C13.5188 4 14.75 5.23122 14.75 6.75C14.75 8.26878 13.5188 9.5 12 9.5C10.4812 9.5 9.25 8.26878 9.25 6.75Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M19.1304 11.9819C20.13 10.9823 21.7507 10.9823 22.7503 11.9818C23.7499 12.9815 23.7499 14.6022 22.7503 15.6018L17.0537 21.2983L17.0334 21.3187C16.9592 21.3932 16.8581 21.4946 16.7396 21.5817C16.6369 21.657 16.5269 21.7218 16.4111 21.7749C16.2774 21.8363 16.1397 21.8754 16.0385 21.9041L16.0109 21.9119L13.2747 22.6937C12.9255 22.7934 12.5497 22.696 12.2929 22.4392C12.0361 22.1824 11.9387 21.8066 12.0385 21.4574L12.8202 18.7212L12.8281 18.6937C12.8568 18.5924 12.8958 18.4547 12.9572 18.321C13.0103 18.2053 13.0751 18.0952 13.1505 17.9925C13.2375 17.874 13.339 17.7729 13.4135 17.6987L13.4338 17.6785L19.1304 11.9819ZM21.3361 13.3961C21.1175 13.1775 20.7632 13.1775 20.5446 13.3961L14.848 19.0927L14.7884 19.1525L14.7729 19.1683L14.7666 19.1895L14.7433 19.2707L14.456 20.2761L15.4615 19.9888L15.5427 19.9655L15.5639 19.9592L15.5796 19.9438L15.6394 19.8841L21.3361 14.1876C21.5546 13.969 21.5546 13.6146 21.3361 13.3961Z"/><path d="M12 12C13.2761 12 14.5004 12.2378 15.6129 12.671L14.0285 14.2553C13.39 14.0898 12.7097 14 12 14C8.72991 14 6.08436 15.9059 5.26834 18.3508C5.20327 18.5457 5.15544 18.6896 5.11977 18.8136C5.10049 18.8806 5.08792 18.9314 5.07981 18.9699C5.14888 18.9805 5.24704 18.9891 5.39105 18.9941C5.55739 18.9999 5.7515 19 6 19H10.6606L10.4934 19.585C10.4429 19.7612 10.361 20.0471 10.3098 20.3182C10.2847 20.451 10.2424 20.6917 10.2388 21L5.93385 21C5.50541 21.0002 5.05856 21.0004 4.68545 20.9314C4.22383 20.846 3.76745 20.639 3.42894 20.1691C3.12295 19.7444 3.02923 19.2953 3.07874 18.8312C3.11629 18.4792 3.24261 18.1018 3.35126 17.7772L3.37122 17.7176C4.49705 14.3444 7.99354 12 12 12Z"/></symbol>
+        <symbol id="i-text-receipt" viewBox="0 0 24 24"><path d="M14.0352 2.04584C14.2617 1.97505 14.5074 1.98665 14.7275 2.081L16.666 2.91303L18.6064 2.081L18.7236 2.03901C19.0024 1.95879 19.3052 2.00302 19.5508 2.16498C19.8313 2.35004 20 2.66386 20 2.99994V20.9999C20 21.336 19.8313 21.6498 19.5508 21.8349C19.2702 22.0199 18.9154 22.0512 18.6064 21.9189L16.666 21.0869L14.7275 21.9189C14.476 22.0267 14.191 22.0267 13.9395 21.9189L12 21.0869L10.0605 21.9189C9.8403 22.0133 9.59474 22.0249 9.36816 21.954L9.27246 21.9189L7.33301 21.0869L5.39355 21.9189C5.08465 22.0512 4.72977 22.0199 4.44922 21.8349C4.16868 21.6498 4 21.336 4 20.9999V2.99994L4.00781 2.87494C4.04402 2.58733 4.20381 2.32687 4.44922 2.16498C4.72977 1.97999 5.08465 1.9487 5.39355 2.081L7.33301 2.91303L9.27246 2.081L9.36816 2.04584C9.59474 1.97495 9.8403 1.98661 10.0605 2.081L12 2.91303L13.9395 2.081L14.0352 2.04584ZM12.3936 4.91889C12.1736 5.01311 11.9285 5.02471 11.7021 4.95405L11.6064 4.91889L9.66602 4.08686L7.72754 4.91889C7.50739 5.01324 7.26165 5.02484 7.03516 4.95405L6.93945 4.91889L6 4.51557V19.4833L6.93945 19.081L7.03516 19.0458C7.26165 18.975 7.50739 18.9867 7.72754 19.081L9.66602 19.9121L11.6064 19.081L11.7021 19.0458C11.9285 18.9752 12.1736 18.9868 12.3936 19.081L14.333 19.9121L16.2725 19.081L16.3682 19.0458C16.5947 18.9749 16.8403 18.9866 17.0605 19.081L18 19.4833V4.51557L17.0605 4.91889C16.8403 5.01328 16.5947 5.02494 16.3682 4.95405L16.2725 4.91889L14.333 4.08686L12.3936 4.91889Z"/><path d="M7.5 8.39994C7.5 7.84766 7.94772 7.39994 8.5 7.39994H11.75C12.3023 7.39994 12.75 7.84766 12.75 8.39994C12.75 8.95223 12.3023 9.39994 11.75 9.39994H8.5C7.94772 9.39994 7.5 8.95223 7.5 8.39994Z"/><path d="M7.5 11.9999C7.5 11.4477 7.94772 10.9999 8.5 10.9999H15.5C16.0523 10.9999 16.5 11.4477 16.5 11.9999C16.5 12.5522 16.0523 12.9999 15.5 12.9999H8.5C7.94772 12.9999 7.5 12.5522 7.5 11.9999Z"/><path d="M7.5 15.5999C7.5 15.0477 7.94772 14.5999 8.5 14.5999H15.5C16.0523 14.5999 16.5 15.0477 16.5 15.5999C16.5 16.1522 16.0523 16.5999 15.5 16.5999H12H8.5C7.94772 16.5999 7.5 16.1522 7.5 15.5999Z"/></symbol>
+        <symbol id="i-building-2" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M6.73918 2C6.75274 2 6.76635 2 6.78 2L10.0608 2C10.5299 1.99997 10.9468 1.99995 11.2926 2.03134C11.6636 2.06502 12.0441 2.14069 12.4098 2.34777C12.9435 2.6499 13.3585 3.12064 13.6128 3.67518C13.7819 4.04387 13.8443 4.42544 13.8728 4.81307C13.9 5.18353 13.9 5.6347 13.9 6.16453V10L17.2608 10C17.7299 9.99997 18.1468 9.99995 18.4926 10.0313C18.8636 10.065 19.2441 10.1407 19.6098 10.3478C20.1435 10.6499 20.5585 11.1206 20.8128 11.6752C20.9819 12.0439 21.0443 12.4254 21.0728 12.8131C21.1 13.1835 21.1 13.6347 21.1 14.1645V20.0049C21.6053 20.0551 22 20.4815 22 21C22 21.5523 21.5523 22 21 22H3C2.44772 22 2 21.5523 2 21C2 20.4815 2.39467 20.0551 2.9 20.0049L2.9 6.16456C2.89999 5.63472 2.89997 5.18353 2.92722 4.81307C2.95572 4.42544 3.01813 4.04387 3.18721 3.67518C3.44151 3.12064 3.85648 2.6499 4.39015 2.34777C4.75591 2.14069 5.13635 2.06502 5.50735 2.03134C5.85318 1.99995 6.2701 1.99997 6.73918 2ZM4.9 20H11.9V6.2C11.9 5.62508 11.8994 5.24805 11.8782 4.95974C11.8576 4.68036 11.8219 4.56799 11.7948 4.50885C11.704 4.31075 11.5682 4.16956 11.4245 4.08821C11.4052 4.07729 11.3411 4.04397 11.1118 4.02315C10.8673 4.00096 10.5424 4 10.02 4H6.78C6.25764 4 5.93266 4.00096 5.68817 4.02315C5.45887 4.04397 5.39476 4.07729 5.37548 4.08821C5.23177 4.16956 5.09601 4.31075 5.00517 4.50885C4.97805 4.56799 4.94237 4.68036 4.92183 4.95974C4.90063 5.24805 4.9 5.62508 4.9 6.2V20ZM13.9 12V20H19.1V14.2C19.1 13.6251 19.0994 13.248 19.0782 12.9597C19.0576 12.6804 19.0219 12.568 18.9948 12.5089C18.904 12.3107 18.7682 12.1696 18.6245 12.0882C18.6052 12.0773 18.5411 12.044 18.3118 12.0232C18.0673 12.001 17.7424 12 17.22 12H13.9ZM6.05 7C6.05 6.44771 6.49771 6 7.05 6H9.75C10.3023 6 10.75 6.44771 10.75 7C10.75 7.55228 10.3023 8 9.75 8H7.05C6.49771 8 6.05 7.55228 6.05 7ZM6.05 11C6.05 10.4477 6.49771 10 7.05 10H9.75C10.3023 10 10.75 10.4477 10.75 11C10.75 11.5523 10.3023 12 9.75 12H7.05C6.49771 12 6.05 11.5523 6.05 11ZM6.05 15C6.05 14.4477 6.49771 14 7.05 14H9.75C10.3023 14 10.75 14.4477 10.75 15C10.75 15.5523 10.3023 16 9.75 16H7.05C6.49771 16 6.05 15.5523 6.05 15Z"/></symbol>
+        <symbol id="i-inbox" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M9.12616 3.99995C8.29804 3.99932 7.65645 3.99884 7.07035 4.19538C6.55478 4.36827 6.08294 4.65117 5.68985 5.02548C5.24128 5.45261 4.95055 6.0191 4.5821 6.73702L2.5414 10.7052C2.39576 10.9881 2.27967 11.2137 2.19594 11.4556C2.12198 11.6693 2.0685 11.8895 2.03628 12.1132C1.99977 12.3668 1.99986 12.62 1.99998 12.9362L2 14.8414C1.99998 15.5412 1.99997 16.128 2.04029 16.6079C2.08247 17.1097 2.17393 17.5833 2.40855 18.0309C2.76715 18.7152 3.33651 19.2663 4.03033 19.61C4.48106 19.8333 4.95757 19.9206 5.46746 19.9611C5.95752 20 6.558 20 7.28029 20H16.7197C17.442 20 18.0425 20 18.5325 19.9611C19.0424 19.9206 19.5189 19.8333 19.9697 19.61C20.6635 19.2663 21.2328 18.7152 21.5914 18.0309C21.8261 17.5833 21.9175 17.1097 21.9597 16.6079C22 16.128 22 15.5413 22 14.8415L22 12.9361C22.0001 12.62 22.0002 12.3668 21.9637 12.1132C21.9315 11.8895 21.878 11.6693 21.804 11.4556C21.7203 11.2137 21.6042 10.9881 21.4586 10.7052L19.4179 6.73698C19.0494 6.01909 18.7587 5.4526 18.3101 5.02548C17.917 4.65117 17.4452 4.36827 16.9296 4.19538C16.3435 3.99884 15.7019 3.99932 14.8738 3.99995H9.12616ZM7.70624 6.0916C7.94233 6.01243 8.22992 6.00002 9.2699 6.00002H14.7301C15.7701 6.00002 16.0577 6.01243 16.2938 6.0916C16.5349 6.17245 16.7522 6.30367 16.931 6.47387C17.1028 6.63752 17.2383 6.87213 17.7047 7.77907L19.3612 11H17.5062C16.5256 11 15.6127 11.5388 15.1607 12.4177C15.0611 12.6113 14.8465 12.75 14.5938 12.75H9.40623C9.15349 12.75 8.93886 12.6113 8.83928 12.4177C8.38728 11.5388 7.47439 11 6.49377 11H4.63879L6.29527 7.77907C6.76169 6.87213 6.89717 6.63752 7.06904 6.47387C7.24778 6.30366 7.46514 6.17245 7.70624 6.0916ZM4 13V14.8C4 15.5521 4.00082 16.0542 4.03327 16.4404C4.06467 16.814 4.12035 16.9887 4.18001 17.1025C4.33913 17.4062 4.59586 17.6582 4.91811 17.8178C5.04495 17.8807 5.23526 17.9364 5.62583 17.9674C6.02727 17.9993 6.54788 18 7.32 18H16.68C17.4521 18 17.9727 17.9993 18.3742 17.9674C18.7647 17.9364 18.955 17.8807 19.0819 17.8178C19.4041 17.6582 19.6609 17.4062 19.82 17.1025C19.8796 16.9887 19.9353 16.814 19.9667 16.4404C19.9992 16.0542 20 15.5521 20 14.8V13H17.5062C17.2535 13 17.0389 13.1387 16.9393 13.3323C16.4873 14.2112 15.5744 14.75 14.5938 14.75H9.40623C8.4256 14.75 7.51272 14.2112 7.06071 13.3323C6.96114 13.1387 6.74651 13 6.49377 13H4Z"/></symbol>
+        <symbol id="i-text-book" viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v18H7a2 2 0 0 0-2 2z"/><path d="M5 20V4"/><line x1="9" y1="7" x2="14" y2="7"/><line x1="9" y1="11" x2="14" y2="11"/></symbol>
+        <symbol id="i-person-2" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M6 6.5C6 4.567 7.567 3 9.5 3C11.433 3 13 4.567 13 6.5C13 8.433 11.433 10 9.5 10C7.567 10 6 8.433 6 6.5ZM9.5 5C8.67157 5 8 5.67157 8 6.5C8 7.32843 8.67157 8 9.5 8C10.3284 8 11 7.32843 11 6.5C11 5.67157 10.3284 5 9.5 5Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M13 8.75C13 7.23122 14.2312 6 15.75 6C17.2688 6 18.5 7.23122 18.5 8.75C18.5 10.2688 17.2688 11.5 15.75 11.5C14.2312 11.5 13 10.2688 13 8.75ZM15.75 8C15.3358 8 15 8.33579 15 8.75C15 9.16421 15.3358 9.5 15.75 9.5C16.1642 9.5 16.5 9.16421 16.5 8.75C16.5 8.33579 16.1642 8 15.75 8Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M2 18.5C2 14.3579 5.35786 11 9.5 11C11.268 11 12.8931 11.6117 14.1752 12.6351C14.6029 12.5465 15.046 12.5 15.5 12.5C19.0899 12.5 22 15.4101 22 19V19.8774C22 20.4974 21.4974 21 20.8774 21H3.15094C2.5153 21 2 20.4847 2 19.8491V18.5ZM17 18.5C17 17.0352 16.5801 15.6685 15.8541 14.5137C18.1739 14.6943 20 16.6339 20 19H17V18.5ZM9.5 13C6.46243 13 4 15.4624 4 18.5V19H15V18.5C15 15.4624 12.5376 13 9.5 13Z"/></symbol>
+        <symbol id="i-parasol" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.6746 4.53015C10.236 4.31128 7.77939 5.30035 6.185 7.26232C6.13478 7.32411 6.09501 7.3731 6.06124 7.41572C6.06305 7.41682 6.06489 7.41793 6.06674 7.41905C6.13412 7.45971 6.2132 7.50541 6.31639 7.56498L8.70829 8.94595C9.8149 7.21308 11.0761 5.77428 12.304 4.80813C12.4267 4.71158 12.5503 4.61876 12.6746 4.53015ZM16.7447 3.77164C12.6474 1.40879 7.52365 2.44379 4.63288 6.00099C4.61695 6.0206 4.60012 6.04103 4.58258 6.06232C4.38161 6.3063 4.08856 6.66207 4.00682 7.15748C3.93968 7.56441 4.02647 8.03496 4.23437 8.39116C4.38582 8.65065 4.58226 8.82565 4.76557 8.95722C4.92177 9.06934 5.11138 9.17874 5.28822 9.28078C5.29765 9.28622 5.30704 9.29164 5.31639 9.29703L8.55456 11.1666C8.5544 11.1665 8.55472 11.1667 8.55456 11.1666C8.55472 11.1667 8.55538 11.1671 8.55554 11.1672L10.6333 12.3667L6.51487 19.5H3.5C2.94772 19.5 2.5 19.9477 2.5 20.5C2.5 21.0523 2.94772 21.5 3.5 21.5H20.4986C21.0509 21.5 21.4986 21.0523 21.4986 20.5C21.4986 19.9477 21.0509 19.5 20.4986 19.5H8.82427L12.3653 13.3667L14.4434 14.5665L17.6822 16.4364C17.6915 16.4418 17.7009 16.4473 17.7103 16.4527C17.8871 16.5548 18.0767 16.6643 18.2519 16.7436C18.4575 16.8365 18.7073 16.9191 19.0077 16.9206C19.4201 16.9225 19.871 16.7624 20.1899 16.5008C20.5781 16.1823 20.7396 15.7506 20.8504 15.4546C20.8601 15.4287 20.8694 15.4039 20.8784 15.3803C22.5142 11.0968 20.847 6.14009 16.7489 3.77408C16.7475 3.77327 16.7461 3.77246 16.7447 3.77164ZM15.7489 5.50613C15.6573 5.45322 15.4576 5.39509 15.0546 5.51521C14.6488 5.63616 14.1326 5.91411 13.5407 6.37987C12.5394 7.16779 11.4406 8.39904 10.4422 9.94704L14.5564 12.3223C15.3978 10.6838 15.9147 9.11648 16.0964 7.85536C16.2038 7.10987 16.1864 6.52386 16.0882 6.11198C15.9908 5.70293 15.8406 5.55905 15.7489 5.50613ZM16.2903 13.3234C17.2377 11.4986 17.8531 9.68697 18.0759 8.14056C18.0982 7.98603 18.1168 7.83257 18.1313 7.6806C19.5402 9.68306 19.9119 12.3051 19.01 14.6668C18.9816 14.7412 18.9591 14.8002 18.939 14.8507C18.9372 14.8497 18.9353 14.8487 18.9334 14.8476C18.8645 14.8096 18.7854 14.764 18.6822 14.7044L16.2903 13.3234Z"/></symbol>
+        <symbol id="i-headphone" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12V14.5C2 16.433 3.567 18 5.5 18C7.433 18 9 16.433 9 14.5V12.5C9 10.567 7.433 9 5.5 9C5.16258 9 4.83632 9.04775 4.52759 9.13685C5.67937 6.13274 8.59062 4 12 4C15.4094 4 18.3206 6.13274 19.4724 9.13686C19.1637 9.04775 18.8374 9 18.5 9C16.567 9 15 10.567 15 12.5V14.5C15 16.433 16.567 18 18.5 18C18.5545 18 18.6087 17.9988 18.6626 17.9963C18.4648 18.2061 18.2476 18.3952 18.0126 18.5657C16.8768 19.3901 15.2089 19.8681 12.9998 19.9763C12.4481 20.0033 12 20.4477 12 21C12 21.5523 12.4482 22.0029 12.9999 21.9785C15.4652 21.8694 17.5996 21.3367 19.1874 20.1843C20.781 19.0277 21.7088 17.3332 21.9416 15.14C21.98 14.9325 22 14.7186 22 14.5V12C22 6.47715 17.5228 2 12 2ZM20 14V12.5C20 11.6716 19.3284 11 18.5 11C17.6716 11 17 11.6716 17 12.5V14.5C17 15.3284 17.6716 16 18.5 16C19.2139 16 19.8114 15.5012 19.9629 14.8331C19.9874 14.5689 20 14.2914 20 14ZM5.5 16C4.67157 16 4 15.3284 4 14.5V12.5C4 11.6716 4.67157 11 5.5 11C6.32843 11 7 11.6716 7 12.5V14.5C7 15.3284 6.32843 16 5.5 16Z"/></symbol>
+        <symbol id="i-pen-waveline" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M15.793 2.79312C17.012 1.57417 18.9883 1.57417 20.2072 2.79312C21.4262 4.01207 21.4262 5.98838 20.2072 7.20733L7.58325 19.8314C7.2967 20.1184 7.04431 20.3712 6.73918 20.5581C6.47077 20.7226 6.17813 20.8438 5.87202 20.9173C5.52406 21.0009 5.16684 21.0006 4.76128 21.0003L3.00009 21.0002C2.4478 21.0002 2.00009 20.5525 2.00009 20.0002L2.00004 18.2391C1.99972 17.8335 1.99944 17.4763 2.08298 17.1283C2.15647 16.8222 2.27768 16.5296 2.44217 16.2612C2.62915 15.956 2.88194 15.7036 3.16895 15.4171L15.793 2.79312ZM18.793 4.20733C18.3551 3.76943 17.6451 3.76943 17.2072 4.20733L4.64445 16.7701C4.26423 17.1503 4.19479 17.2289 4.14745 17.3062C4.09262 17.3956 4.05221 17.4932 4.02772 17.5952C4.00656 17.6833 4.00009 17.788 4.00009 18.3257V19.0002H4.67463C5.21235 19.0002 5.31702 18.9938 5.40513 18.9726C5.50717 18.9481 5.60471 18.9077 5.69418 18.8529C5.77145 18.8055 5.85004 18.7361 6.23027 18.3559L18.793 5.79312C19.2309 5.35522 19.2309 4.64524 18.793 4.20733Z"/><path d="M21.6747 17.2619C22.0823 17.6346 22.1107 18.2671 21.7381 18.6747L20.7379 19.7689C20.0283 20.5449 19.0458 21 18.0002 21C16.9548 21 15.9726 20.5452 15.2631 19.7696C14.9111 19.3863 14.4549 19.1901 14.0002 19.1901C13.5453 19.1901 13.0889 19.3865 12.7369 19.7701C12.3635 20.1771 11.7309 20.2043 11.3239 19.8309C10.917 19.4575 10.8898 18.8249 11.2632 18.418C11.9735 17.6438 12.9555 17.1901 14.0002 17.1901C15.0449 17.1901 16.0269 17.6438 16.7373 18.418L16.7384 18.4192C17.0897 18.8034 17.5458 19 18.0002 19C18.4545 19 18.9107 18.8033 19.2619 18.4192L20.2619 17.3253C20.6346 16.9177 21.2671 16.8893 21.6747 17.2619Z"/></symbol>
+        <symbol id="i-scales" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 3.5C11.2822 3.5 10.6715 4.09658 10.6715 4.86842C10.6715 5.64026 11.2822 6.23684 12 6.23684C12.7178 6.23684 13.3285 5.64026 13.3285 4.86842C13.3285 4.09658 12.7178 3.5 12 3.5ZM8.82106 3.86842C9.24032 2.50408 10.495 1.5 12 1.5C13.505 1.5 14.7597 2.50408 15.1789 3.86842L19.4513 3.86842C20.0036 3.86842 20.4513 4.31614 20.4513 4.86842C20.4513 5.42071 20.0036 5.86842 19.4513 5.86842L15.1789 5.86842C14.857 6.91615 14.0423 7.75142 13 8.08267V19.5H19.4513C20.0036 19.5 20.4513 19.9477 20.4513 20.5C20.4513 21.0523 20.0036 21.5 19.4513 21.5L4.54869 21.5C3.9964 21.5 3.54869 21.0523 3.54869 20.5C3.54869 19.9477 3.9964 19.5 4.54869 19.5H11V8.08267C9.95767 7.75142 9.14303 6.91615 8.82106 5.86842L4.54869 5.86843C3.9964 5.86843 3.54869 5.42071 3.54869 4.86843C3.54869 4.31614 3.9964 3.86843 4.54869 3.86843L8.82106 3.86842ZM5.94581 7.18421C6.28749 7.18421 6.60552 7.35866 6.78914 7.64681L9.56968 12.0103C9.57555 12.0195 9.58141 12.0287 9.58725 12.0378C9.73904 12.2758 9.87847 12.4944 9.99257 12.8378C10.0423 12.9874 10.077 13.172 10.0978 13.303C10.1186 13.4341 10.1426 13.6203 10.1416 13.7779C10.1396 14.0997 10.1131 14.2404 10.063 14.4358C9.58613 16.2929 7.94805 17.7105 5.94581 17.7105C3.94357 17.7105 2.30549 16.2929 1.82864 14.4358C1.77848 14.2404 1.75202 14.0997 1.75003 13.7779C1.74905 13.6203 1.77307 13.4341 1.79384 13.303C1.8146 13.172 1.84934 12.9874 1.89905 12.8378C2.01314 12.4944 2.15257 12.2758 2.30436 12.0378C2.3102 12.0287 2.31606 12.0195 2.32194 12.0103L5.10248 7.64681C5.2861 7.35866 5.60413 7.18421 5.94581 7.18421ZM3.76138 13.9211C3.76266 13.9261 3.76412 13.9318 3.7658 13.9384C4.03538 14.9882 4.9338 15.7105 5.94581 15.7105C6.95782 15.7105 7.85624 14.9882 8.12581 13.9384C8.12749 13.9318 8.12896 13.9261 8.13023 13.9211H3.76138ZM7.14127 11.9211H4.75035L5.94581 10.045L7.14127 11.9211ZM18.0542 7.18421C18.3959 7.18421 18.7139 7.35866 18.8975 7.64681L21.6781 12.0103C21.6839 12.0195 21.6898 12.0287 21.6956 12.0378C21.8474 12.2758 21.9869 12.4944 22.1009 12.8378C22.1507 12.9874 22.1854 13.172 22.2062 13.303C22.2269 13.4341 22.2509 13.6203 22.25 13.7779C22.248 14.0996 22.2215 14.2404 22.1714 14.4358C21.6945 16.2929 20.0564 17.7105 18.0542 17.7105C16.0519 17.7105 14.4139 16.2929 13.937 14.4358C13.8869 14.2404 13.8604 14.0997 13.8584 13.7779C13.8574 13.6203 13.8814 13.4341 13.9022 13.303C13.923 13.172 13.9577 12.9874 14.0074 12.8378C14.1215 12.4944 14.2609 12.2758 14.4127 12.0378C14.4186 12.0287 14.4244 12.0195 14.4303 12.0103L17.2109 7.64681C17.3945 7.35866 17.7125 7.18421 18.0542 7.18421ZM16.8587 11.9211H19.2496L18.0542 10.045L16.8587 11.9211ZM20.2386 13.9211C20.2373 13.9261 20.2359 13.9318 20.2342 13.9384C19.9646 14.9882 19.0662 15.7105 18.0542 15.7105C17.0422 15.7105 16.1438 14.9882 15.8742 13.9384C15.8725 13.9318 15.871 13.9261 15.8698 13.9211H20.2386Z"/></symbol>
+        <symbol id="i-bank" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.8322 2.50758C11.9438 2.49747 12.0562 2.49747 12.1678 2.50758C12.2967 2.51925 12.4192 2.54761 12.508 2.56815C12.5163 2.57009 12.5244 2.57196 12.5322 2.57374L19.1358 4.08912C19.312 4.12952 19.4936 4.17118 19.6483 4.21919C19.8235 4.27357 20.028 4.35421 20.2276 4.50267C20.5054 4.70931 20.7196 4.9871 20.8512 5.30355C20.9449 5.52886 20.9755 5.74371 20.9885 5.926C21.0001 6.08892 21 6.27797 21 6.46563V7.54675C21 7.77747 21.0001 8.00497 20.9848 8.19817C20.968 8.4106 20.9281 8.6666 20.7999 8.92637C20.6232 9.28452 20.3382 9.58171 19.9803 9.77C19.718 9.90803 19.4583 9.95108 19.2457 9.96903C19.2379 9.96968 19.2301 9.97031 19.2222 9.97091V15.3425C19.2301 15.3431 19.2379 15.3437 19.2457 15.3444C19.4583 15.3623 19.718 15.4054 19.9803 15.5434C20.3382 15.7317 20.6232 16.0289 20.7999 16.3871C20.9281 16.6468 20.968 16.9028 20.9848 17.1153C21.0001 17.3085 21 17.536 21 17.7667V18.5617C21 18.7924 21.0001 19.0199 20.9848 19.2131C20.968 19.4255 20.9281 19.6815 20.7999 19.9413C20.6232 20.2994 20.3382 20.5966 19.9803 20.7849C19.718 20.923 19.4583 20.966 19.2457 20.984C19.0546 21.0001 18.8307 21 18.6089 21H5.39108C5.1693 21 4.94539 21.0001 4.75433 20.984C4.54166 20.966 4.28203 20.923 4.0197 20.7849C3.66185 20.5966 3.37682 20.2994 3.20011 19.9413C3.07193 19.6815 3.03203 19.4255 3.01523 19.2131C2.99994 19.0199 2.99997 18.7924 3 18.5616L3 17.7667C2.99997 17.536 2.99994 17.3085 3.01523 17.1153C3.03203 16.9028 3.07193 16.6468 3.20011 16.3871C3.37682 16.0289 3.66185 15.7317 4.0197 15.5434C4.28203 15.4054 4.54166 15.3623 4.75433 15.3444C4.76209 15.3437 4.76991 15.3431 4.77778 15.3425V9.97091C4.76991 9.97031 4.76209 9.96968 4.75433 9.96903C4.54166 9.95108 4.28203 9.90803 4.0197 9.77C3.66185 9.58171 3.37682 9.28452 3.20011 8.92637C3.07193 8.6666 3.03203 8.41059 3.01523 8.19817C2.99994 8.00496 2.99997 7.77745 3 7.54672C3 7.53662 3 7.52652 3 7.51641L3 6.49154C3 6.48291 3 6.47428 3 6.46564C2.99997 6.27798 2.99995 6.08893 3.01154 5.926C3.0245 5.74371 3.0551 5.52886 3.1488 5.30354C3.2804 4.98709 3.49465 4.70931 3.77241 4.50267C3.97196 4.35421 4.17647 4.27357 4.35166 4.21919C4.50636 4.17118 4.68804 4.12951 4.86423 4.08911C4.87285 4.08714 4.88145 4.08516 4.89003 4.08319L11.4678 2.57374C11.4756 2.57196 11.4837 2.57009 11.492 2.56815C11.5808 2.54761 11.7033 2.51925 11.8322 2.50758ZM6.77778 9.98507V15.3284H8.77778V9.98507H6.77778ZM5.42222 7.98507C5.22381 7.98507 5.09697 7.98461 5.0053 7.981C5.0005 7.88056 5 7.74146 5 7.51641V6.49154C5 6.30445 5.00041 6.19251 5.00397 6.11228C5.0273 6.10602 5.0551 6.0989 5.08855 6.0907C5.15679 6.07399 5.23595 6.0558 5.33736 6.03253L11.9151 4.52307L11.9864 4.50683C11.9914 4.50571 11.9959 4.50471 12 4.50381C12.0041 4.50471 12.0086 4.50571 12.0136 4.50683L12.0849 4.52307L18.6626 6.03253C18.7641 6.0558 18.8432 6.07399 18.9114 6.09071C18.9449 6.0989 18.9727 6.10602 18.996 6.11228C18.9996 6.19251 19 6.30445 19 6.49155V7.51642C19 7.74146 18.9995 7.88055 18.9947 7.981C18.903 7.98461 18.7762 7.98507 18.5778 7.98507H5.42222ZM10.7778 9.98507V15.3284H13.2222V9.98507H10.7778ZM15.2222 9.98507V15.3284H17.2222V9.98507H15.2222ZM5.42222 17.3284C5.22382 17.3284 5.09698 17.3288 5.0053 17.3324C5.0005 17.4329 5 17.572 5 17.797V18.5313C5 18.7564 5.00049 18.8955 5.0053 18.9959C5.09697 18.9995 5.22382 19 5.42222 19H18.5778C18.7762 19 18.903 18.9995 18.9947 18.9959C18.9995 18.8955 19 18.7564 19 18.5313V17.797C19 17.572 18.9995 17.4329 18.9947 17.3324C18.903 17.3288 18.7762 17.3284 18.5778 17.3284H5.42222Z"/></symbol>
+        <symbol id="i-filter" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="17" x2="14" y2="17"/></symbol>
+        <symbol id="i-arrow-left" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+        <symbol id="i-chevron-2-left" viewBox="0 0 24 24"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></symbol>
+        <symbol id="i-text-document" viewBox="0 0 24 24">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M9.15857 2L13.75 2C14.0201 2 14.2787 2.10926 14.467 2.30292L19.717 7.70292C19.8985 7.88959 20 8.13966 20 8.4V16.7197C20 17.442 20 18.0425 19.9611 18.5325C19.9206 19.0424 19.8333 19.5189 19.61 19.9697C19.2663 20.6635 18.7152 21.2329 18.0309 21.5915C17.5832 21.8261 17.1097 21.9175 16.6078 21.9597C16.128 22 15.5412 22 14.8414 22H9.15859C8.45878 22 7.87204 22 7.39216 21.9597C6.89033 21.9175 6.41676 21.8261 5.96908 21.5915C5.28484 21.2329 4.73373 20.6635 4.39003 19.9697C4.16675 19.5189 4.07941 19.0424 4.0389 18.5325C3.99998 18.0425 3.99999 17.442 4 16.7197V7.28029C3.99999 6.558 3.99998 5.95753 4.0389 5.46746C4.07941 4.95757 4.16675 4.48106 4.39003 4.03033C4.73373 3.33651 5.28484 2.76715 5.96908 2.40855C6.41676 2.17393 6.89033 2.08247 7.39216 2.0403C7.87203 1.99997 8.45877 1.99999 9.15857 2ZM7.55965 4.03327C7.18604 4.06467 7.01131 4.12036 6.89747 4.18002C6.59386 4.33913 6.34182 4.59587 6.18219 4.91812C6.11936 5.04495 6.06365 5.23526 6.03262 5.62583C6.00074 6.02727 6 6.54788 6 7.32V16.68C6 17.4521 6.00074 17.9727 6.03262 18.3742C6.06365 18.7647 6.11936 18.9551 6.18219 19.0819C6.34182 19.4041 6.59386 19.6609 6.89747 19.82C7.01131 19.8796 7.18604 19.9353 7.55965 19.9667C7.94579 19.9992 8.44796 20 9.2 20H14.8C15.552 20 16.0542 19.9992 16.4404 19.9667C16.814 19.9353 16.9887 19.8796 17.1025 19.82C17.4061 19.6609 17.6582 19.4041 17.8178 19.0819C17.8806 18.9551 17.9364 18.7647 17.9674 18.3742C17.9993 17.9727 18 17.4521 18 16.68V9.40007H15.15C15.1397 9.40007 15.1294 9.40007 15.1192 9.40007C14.901 9.4001 14.6802 9.40014 14.4916 9.38429C14.2815 9.36664 14.0241 9.32423 13.7636 9.1877C13.4086 9.00168 13.1252 8.70768 12.9493 8.35255C12.8214 8.09434 12.7817 7.84011 12.7651 7.63037C12.7499 7.43998 12.75 7.21604 12.75 6.99022C12.75 6.98017 12.75 6.97012 12.75 6.96007V4H9.2C8.44796 4 7.94579 4.00082 7.55965 4.03327ZM14.75 5.46313L16.6331 7.40007H15.15C14.9647 7.40007 14.8431 7.39965 14.7544 7.3966C14.7504 7.30038 14.75 7.16797 14.75 6.96007V5.46313ZM7.5 9.3C7.5 8.74772 7.94772 8.3 8.5 8.3H10.25C10.8023 8.3 11.25 8.74772 11.25 9.3C11.25 9.85229 10.8023 10.3 10.25 10.3H8.5C7.94772 10.3 7.5 9.85229 7.5 9.3ZM7.5 12.9C7.5 12.3477 7.94772 11.9 8.5 11.9H15.5C16.0523 11.9 16.5 12.3477 16.5 12.9C16.5 13.4523 16.0523 13.9 15.5 13.9H8.5C7.94772 13.9 7.5 13.4523 7.5 12.9ZM7.5 16.5C7.5 15.9477 7.94772 15.5 8.5 15.5H15.5C16.0523 15.5 16.5 15.9477 16.5 16.5C16.5 17.0523 16.0523 17.5 15.5 17.5H8.5C7.94772 17.5 7.5 17.0523 7.5 16.5Z"/>
+        </symbol>
+      </svg>
+
+      <!-- AppNavBar (always in DOM, styled per folded state) -->
+      <aside class="app-navbar" id="app-navbar">
+        <div class="app-navbar__header">
+          <span class="app-navbar__thumb" aria-hidden="true"></span>
+          <span class="app-navbar__title">
+            <span>회사명</span>
+            <svg class="app-navbar__title-arrow"><use href="#i-chevron-down"/></svg>
+          </span>
+          <button class="fold-btn" id="btn-fold" title="Toggle fold" aria-label="Toggle fold">
+            <svg class="ico ico-close"><use href="#i-chevron-2-left"/></svg>
+            <svg class="ico ico-fx ico-open"><use href="#i-menu"/></svg>
+          </button>
+        </div>
+        <nav class="app-navbar__body">
+          <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-navbar">220</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-magnifier"/></svg><span class="nav-item__label">검색</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-bell"/></svg><span class="nav-item__label">알림</span><span class="nav-item__badge">7</span></div>
+
+          <div class="nav-divider"></div>
+
+          <div class="nav-item"><svg class="ico"><use href="#i-house"/></svg><span class="nav-item__label">홈 피드</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-pin"/></svg><span class="nav-item__label">공지</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-smile-face"/></svg><span class="nav-item__label">구성원</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-message-2"/></svg><span class="nav-item__label">원온원</span></div>
+          <div class="nav-item" data-gnb="goals-parent">
+            <svg class="ico"><use href="#i-target"/></svg>
+            <span class="nav-item__label">목표</span>
+            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right"/></svg>
+            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down"/></svg>
+          </div>
+          <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-my"><span class="nav-item__label">내 목표</span></div>
+          <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-all"><span class="nav-item__label">전체 목표</span></div>
+          <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-members"><span class="nav-item__label">구성원 목표</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-stopwatch"/></svg><span class="nav-item__label">근무</span></div>
+
+          <div class="nav-item"><svg class="ico"><use href="#i-banknote"/></svg><span class="nav-item__label">비용</span><svg class="nav-item__expand"><use href="#i-chevron-down"/></svg></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">증빙</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">전표</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">지출결의</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">카드 관리</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">비용 정책 · 자동화 관리</span></div>
+
+          <div class="nav-item"><svg class="ico"><use href="#i-text-document"/></svg><span class="nav-item__label">워크플로우</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-signature"/></svg><span class="nav-item__label">전자결제</span><svg class="nav-item__expand"><use href="#i-chevron-right"/></svg></div>
+
+          <div class="nav-item" data-gnb="knowledge-parent"><svg class="ico"><use href="#i-text-book"/></svg><span class="nav-item__label">지식 관리</span><svg class="nav-item__expand"><use href="#i-chevron-down"/></svg></div>
+          <div class="nav-item nav-item--sub active" data-gnb="knowledge-docs"><span class="nav-item__label">지식 문서</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">외부 서비스 지식</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">AI 피드백 이슈</span></div>
+        </nav>
+        <div class="navbar-resizer" id="navbar-resizer"></div>
+      </aside>
+
+      <!-- Floating AppNavBar (only shown when folded + hover) -->
+      <aside class="floating-navbar" id="floating-navbar">
+        <div class="app-navbar__header">
+          <span class="app-navbar__thumb" aria-hidden="true"></span>
+          <span class="app-navbar__title">
+            <span>회사명</span>
+            <svg class="app-navbar__title-arrow"><use href="#i-chevron-down"/></svg>
+          </span>
+          <button class="fold-btn" id="btn-fold-floating" title="Toggle fold" aria-label="Toggle fold">
+            <svg class="ico"><use href="#i-panel-left"/></svg>
+          </button>
+        </div>
+        <nav class="app-navbar__body">
+          <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-floating">220</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-magnifier"/></svg><span class="nav-item__label">검색</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-bell"/></svg><span class="nav-item__label">알림</span><span class="nav-item__badge">7</span></div>
+          <div class="nav-divider"></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-house"/></svg><span class="nav-item__label">홈 피드</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-pin"/></svg><span class="nav-item__label">공지</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-smile-face"/></svg><span class="nav-item__label">구성원</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-message-2"/></svg><span class="nav-item__label">원온원</span></div>
+          <div class="nav-item" data-gnb="goals-parent">
+            <svg class="ico"><use href="#i-target"/></svg>
+            <span class="nav-item__label">목표</span>
+            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right"/></svg>
+            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down"/></svg>
+          </div>
+          <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-my"><span class="nav-item__label">내 목표</span></div>
+          <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-all"><span class="nav-item__label">전체 목표</span></div>
+          <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-members"><span class="nav-item__label">구성원 목표</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-stopwatch"/></svg><span class="nav-item__label">근무</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-banknote"/></svg><span class="nav-item__label">비용</span><svg class="nav-item__expand"><use href="#i-chevron-down"/></svg></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">증빙</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">전표</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">지출결의</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">카드 관리</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">비용 정책 · 자동화 관리</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-text-document"/></svg><span class="nav-item__label">워크플로우</span></div>
+          <div class="nav-item"><svg class="ico"><use href="#i-signature"/></svg><span class="nav-item__label">전자결제</span><svg class="nav-item__expand"><use href="#i-chevron-right"/></svg></div>
+          <div class="nav-item" data-gnb="knowledge-parent"><svg class="ico"><use href="#i-text-book"/></svg><span class="nav-item__label">지식 관리</span><svg class="nav-item__expand"><use href="#i-chevron-down"/></svg></div>
+          <div class="nav-item nav-item--sub active" data-gnb="knowledge-docs"><span class="nav-item__label">지식 문서</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">외부 서비스 지식</span></div>
+          <div class="nav-item nav-item--sub"><span class="nav-item__label">AI 피드백 이슈</span></div>
+        </nav>
+        <div class="floating-navbar-resizer" id="floating-navbar-resizer"></div>
+      </aside>
+
+      <!-- PageRoot — flex row: localSidebar | page-right -->
+      <div class="page-root">
+        <aside class="local-sidebar" id="local-sidebar">
+          <button class="side-toggle" id="btn-local-toggle" title="Close localSidebar" aria-label="Close localSidebar">
+            <svg class="ico ico-fx"><use href="#i-panel-left"/></svg>
+          </button>
+
+          <!-- localSidebar — knowledge view (지식 문서) -->
+          <div class="local-sidebar__content lnb" data-view="knowledge">
+            <div class="local-sidebar__lnb-header">
+              <span class="page-header__title">지식 문서</span>
+            </div>
+            <nav class="local-sidebar__menu">
+              <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-local-lnb">220</span></div>
+              <div class="nav-item active"><svg class="ico"><use href="#i-grid"/></svg><span class="nav-item__label">모든 문서</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-questionmark"/></svg><span class="nav-item__label">카테고리 미분류</span></div>
+
+              <div class="nav-section__header">카테고리</div>
+              <div class="nav-item"><svg class="ico"><use href="#i-person-badge-pen"/></svg><span class="nav-item__label">채용</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-person-2"/></svg><span class="nav-item__label">구성원 여정</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-stopwatch"/></svg><span class="nav-item__label">근태</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-parasol"/></svg><span class="nav-item__label">휴가</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-banknote"/></svg><span class="nav-item__label">급여</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-scales"/></svg><span class="nav-item__label">보상</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-text-receipt"/></svg><span class="nav-item__label">비용</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-pen-waveline"/></svg><span class="nav-item__label">교육</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-trendarrow-up"/></svg><span class="nav-item__label">성장</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-target"/></svg><span class="nav-item__label">목표</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-headphone"/></svg><span class="nav-item__label">업무 지원</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-scales"/></svg><span class="nav-item__label">복리후생</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-smile-face"/></svg><span class="nav-item__label">조직 문화</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-building-2"/></svg><span class="nav-item__label">조직 원칙</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-bank"/></svg><span class="nav-item__label">컴플라이언스</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-inbox"/></svg><span class="nav-item__label">문서 · 증명서</span></div>
+            </nav>
+          </div>
+
+          <!-- localSidebar — goals view (전체 목표) -->
+          <div class="local-sidebar__content lnb" data-view="goals">
+            <div class="local-sidebar__lnb-header">
+              <span class="page-header__title">전체 목표</span>
+            </div>
+            <nav class="local-sidebar__menu">
+              <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-local-lnb-goals">220</span></div>
+              <div class="ls-search">
+                <svg class="ico"><use href="#i-magnifier"/></svg>
+                <input type="text" placeholder="조직 검색" />
+              </div>
+
+              <div class="nav-section__header">빠른 선택</div>
+              <div class="nav-item active"><svg class="ico"><use href="#i-target"/></svg><span class="nav-item__label">전체</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-building-2"/></svg><span class="nav-item__label">PD Chapter</span><span class="nav-item__pill">주조직</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-building-2"/></svg><span class="nav-item__label">Relation Squad</span></div>
+
+              <div class="nav-section__header">조직별 보기</div>
+              <div class="nav-item nav-tree__row" data-depth="0"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Product Group</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Service Tribe</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Relation Squad</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Finance Squad</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Time Tracking Squad</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Mini Squad</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Insight Squad</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Mobile Squad</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-right"/></svg><span class="nav-item__label">Product Group 직속</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">QA Team</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Security Team</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Training Center</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center BE</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center FE</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center PD</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Design System Team</span></div>
+            </nav>
+          </div>
+
+          <!-- Panel 모드 컨텐츠 (placeholder, 추후 다른 UI 적용) -->
+          <div class="local-sidebar__content panel">
+            <div class="region">localSidebar<br><span class="accent" id="w-local">220</span></div>
+          </div>
+
+          <div class="side-resizer local" id="local-resizer"></div>
+        </aside>
+        <div class="page-right">
+          <div class="page-header">
+            <button class="page-header__lnb-reopen" id="btn-lnb-reopen" title="Open localSidebar" aria-label="Open localSidebar">
+              <svg class="ico ico-fx"><use href="#i-panel-left"/></svg>
+            </button>
+            <span class="page-header__title">타이틀</span>
+            <nav class="page-header__breadcrumb breadcrumb-knowledge" aria-label="Breadcrumb" data-view="knowledge">
+              <span class="breadcrumb-item" title="지식 관리">
+                <svg class="ico"><use href="#i-text-book"/></svg>
+                <span>지식 관리</span>
+              </span>
+              <svg class="breadcrumb-sep"><use href="#i-chevron-right"/></svg>
+              <span class="breadcrumb-item" title="지식 문서">
+                <svg class="ico"><use href="#i-text-document"/></svg>
+                <span>지식 문서</span>
+              </span>
+              <svg class="breadcrumb-sep"><use href="#i-chevron-right"/></svg>
+              <span class="breadcrumb-item" title="모든 문서">
+                <svg class="ico"><use href="#i-grid"/></svg>
+                <span>모든 문서</span>
+              </span>
+              <span class="breadcrumb-size">(<span id="w-main-bc">—</span>)</span>
+            </nav>
+            <nav class="page-header__breadcrumb breadcrumb-goals" aria-label="Breadcrumb" data-view="goals">
+              <span class="breadcrumb-item" title="목표">
+                <svg class="ico"><use href="#i-target"/></svg>
+                <span>목표</span>
+              </span>
+              <svg class="breadcrumb-sep"><use href="#i-chevron-right"/></svg>
+              <span class="breadcrumb-item" title="전체 목표">
+                <svg class="ico"><use href="#i-target"/></svg>
+                <span>전체 목표</span>
+              </span>
+              <span class="breadcrumb-size">(<span id="w-main-bc-goals">—</span>)</span>
+            </nav>
+            <button class="page-header__end-toggle" id="btn-page-end-toggle" title="Toggle endPanel" aria-label="Toggle endPanel">
+              <svg class="ico ico-fx ico-flip-x"><use href="#i-panel-left"/></svg>
+            </button>
+          </div>
+          <div class="page-container">
+            <!-- Aside 접힌 상태에서 펼치기 버튼 (PageMain 양쪽 엣지) -->
+            <button class="side-reopen local" id="btn-local-reopen" title="Open localSidebar" aria-label="Open localSidebar">
+              <svg class="ico ico-fx"><use href="#i-panel-left"/></svg>
+            </button>
+            <button class="side-reopen end" id="btn-end-reopen" title="Open endPanel" aria-label="Open endPanel">
+              <svg class="ico ico-fx ico-flip-x"><use href="#i-panel-left"/></svg>
+            </button>
+            <main class="page-main" id="page-main">
+              <div class="region" aria-hidden="true">PageMain<br><span class="accent" id="w-main">—</span></div>
+              <div class="pm-table-wrap" data-view="knowledge">
+                <table class="pm-table">
+                  <thead>
+                    <tr>
+                      <th style="width:32px"><span class="pm-checkbox"></span></th>
+                      <th>제목</th>
+                      <th>카테고리</th>
+                      <th>태그</th>
+                      <th>담당자</th>
+                      <th>마지막 수정</th>
+                      <th>AI 게시</th>
+                      <th style="width:32px"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>취업 규칙</span></td>
+                      <td><span class="pm-cat">채용</span></td>
+                      <td><span class="pm-tag pm-tag--yellow">개정중</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>김민준</span></td>
+                      <td><span class="pm-date">2023.05.28</span></td>
+                      <td><span class="pm-toggle on"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>근무 시간 관리 정책</span></td>
+                      <td><span class="pm-cat">구성원 여정</span></td>
+                      <td><span class="pm-tag pm-tag--green">제출됨</span><span class="pm-tag pm-tag--red">필수숙지</span><span class="pm-tag pm-tag--more">+2</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>박지후</span></td>
+                      <td><span class="pm-date">2023.04.17</span></td>
+                      <td><span class="pm-toggle on"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>휴가 신청 절차 안내</span></td>
+                      <td><span class="pm-cat">근태</span></td>
+                      <td><span class="pm-tag pm-tag--purple">인사팀</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>서예준</span></td>
+                      <td><span class="pm-date">2023.03.08</span></td>
+                      <td><span class="pm-toggle on"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>출장 및 경비 처리 규정</span></td>
+                      <td><span class="pm-cat">휴가</span></td>
+                      <td><span class="pm-tag pm-tag--red">필수 숙지</span><span class="pm-tag pm-tag--purple">인사팀</span><span class="pm-tag pm-tag--yellow">개정중</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>윤하준</span></td>
+                      <td><span class="pm-date">2023.02.11</span></td>
+                      <td><span class="pm-toggle"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>회사 문화 개선 가이드라인</span></td>
+                      <td><span class="pm-cat">복리후생</span></td>
+                      <td><span class="pm-tag pm-tag--blue">참고사항</span><span class="pm-tag pm-tag--green">제출됨</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>최도윤</span></td>
+                      <td><span class="pm-date">2023.01.22</span></td>
+                      <td><span class="pm-toggle"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>직장 내 괴롭힘 금지 정책</span></td>
+                      <td><span class="pm-cat">업무 지원</span></td>
+                      <td><span class="pm-tag pm-tag--yellow">개정중</span><span class="pm-tag pm-tag--red">필수숙지</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>정시우</span></td>
+                      <td><span class="pm-date">2022.12.05</span></td>
+                      <td><span class="pm-toggle on"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>개인 정보 보호 정책</span></td>
+                      <td><span class="pm-cat">목표</span></td>
+                      <td><span class="pm-tag pm-tag--gray">폐기</span><span class="pm-tag pm-tag--purple">인사팀</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>배서준</span></td>
+                      <td><span class="pm-date">2022.11.16</span></td>
+                      <td><span class="pm-toggle"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>보안 서약서 작성 안내</span></td>
+                      <td><span class="pm-cat">성장</span></td>
+                      <td><span class="pm-tag pm-tag--red">필수 숙지</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>양하준</span></td>
+                      <td><span class="pm-date">2022.10.01</span></td>
+                      <td><span class="pm-toggle"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>지식 재산권 보호 정책</span></td>
+                      <td><span class="pm-cat">교육</span></td>
+                      <td><span class="pm-tag pm-tag--green">제출됨</span><span class="pm-tag pm-tag--yellow">개정중</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>오지훈</span></td>
+                      <td><span class="pm-date">2022.09.18</span></td>
+                      <td><span class="pm-toggle"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="pm-checkbox"></span></td>
+                      <td><span class="pm-doc-title"><svg class="ico"><use href="#i-text-document"/></svg>윤리 강령 준수 안내</span></td>
+                      <td><span class="pm-cat">비용</span></td>
+                      <td><span class="pm-tag pm-tag--yellow">개정중</span></td>
+                      <td><span class="pm-assignee"><span class="pm-assignee__avatar"></span>강민서</span></td>
+                      <td><span class="pm-date">2022.08.24</span></td>
+                      <td><span class="pm-toggle"></span></td>
+                      <td><button class="pm-more-btn"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <!-- Goals view 테이블 (제목 / 담당 주체 / 참여 멤버 / 사이클) -->
+              <div class="pm-table-wrap" data-view="goals">
+                <table class="pm-table pm-table--goals">
+                  <thead>
+                    <tr>
+                      <th style="width:32px"></th>
+                      <th>제목</th>
+                      <th style="width:160px">담당 주체</th>
+                      <th style="width:140px">참여 멤버</th>
+                      <th style="width:140px">사이클</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr data-goals-depth="0">
+                      <td class="pm-goals__caret"><svg class="ico"><use href="#i-chevron-right"/></svg></td>
+                      <td><span class="pm-goals__title"><svg class="ico"><use href="#i-text-document"/></svg>대중과 소통하며 대한양파농원의 존재감을 널리 퍼뜨리기</span></td>
+                      <td>대한양파농원</td>
+                      <td></td>
+                      <td><span class="pm-cycle">2025</span></td>
+                    </tr>
+                    <tr data-goals-depth="0">
+                      <td class="pm-goals__caret"><svg class="ico"><use href="#i-chevron-down"/></svg></td>
+                      <td><span class="pm-goals__title"><svg class="ico"><use href="#i-text-document"/></svg>양파처럼 유연하고 민첩하게 일하는 조직 만들기</span></td>
+                      <td>대한양파농원</td>
+                      <td></td>
+                      <td><span class="pm-cycle">2025</span></td>
+                    </tr>
+                    <tr data-goals-depth="1">
+                      <td class="pm-goals__caret"><svg class="ico"><use href="#i-chevron-right"/></svg></td>
+                      <td><span class="pm-goals__title"><svg class="ico"><use href="#i-text-document"/></svg>회의 시간 총합 월 30% 감축</span></td>
+                      <td>대한양파농원</td>
+                      <td></td>
+                      <td><span class="pm-cycle">2025</span></td>
+                    </tr>
+                    <tr data-goals-depth="1">
+                      <td class="pm-goals__caret"><svg class="ico"><use href="#i-chevron-down"/></svg></td>
+                      <td><span class="pm-goals__title"><svg class="ico"><use href="#i-grid"/></svg>전사 워크플로우 자동화율 70% 달성</span></td>
+                      <td>PD Chapter</td>
+                      <td>임은수 외 n명</td>
+                      <td><span class="pm-cycle">2025</span></td>
+                    </tr>
+                    <tr data-goals-depth="0">
+                      <td class="pm-goals__caret"><svg class="ico"><use href="#i-chevron-down"/></svg></td>
+                      <td><span class="pm-goals__title"><svg class="ico"><use href="#i-grid"/></svg>최고 관리자에 IP 접근 제어 적용</span></td>
+                      <td>PD Chapter</td>
+                      <td>임은수 외 n명</td>
+                      <td><span class="pm-cycle">2025</span></td>
+                    </tr>
+                    <tr data-goals-depth="1">
+                      <td class="pm-goals__caret"><svg class="ico"><use href="#i-chevron-down"/></svg></td>
+                      <td><span class="pm-goals__title"><svg class="ico"><use href="#i-grid"/></svg>최고 관리자에 IP 접근 제어 적용</span></td>
+                      <td>Service Platform...</td>
+                      <td>임은수 외 n명</td>
+                      <td><span class="pm-cycle">2025</span></td>
+                    </tr>
+                    <tr data-goals-depth="2">
+                      <td class="pm-goals__caret"><svg class="ico"><use href="#i-chevron-down"/></svg></td>
+                      <td><span class="pm-goals__title"><svg class="ico"><use href="#i-grid"/></svg>인증 관련 보안 개선 과제</span></td>
+                      <td>Service Platform...</td>
+                      <td>임은수 외 n명</td>
+                      <td><span class="pm-cycle">2025</span></td>
+                    </tr>
+                    <tr data-goals-depth="3">
+                      <td class="pm-goals__caret"></td>
+                      <td><span class="pm-goals__title"><span class="pm-goals__avatar"></span>베타 사용자 500명 확보</span></td>
+                      <td>박성완</td>
+                      <td>임은수 외 n명</td>
+                      <td><span class="pm-cycle">2025 하반기</span></td>
+                    </tr>
+                    <tr data-goals-depth="3">
+                      <td class="pm-goals__caret"></td>
+                      <td><span class="pm-goals__title"><span class="pm-goals__avatar"></span>Notion에 "양파가 지나간 길" 자동 로그 시스템 구축</span></td>
+                      <td>조수현</td>
+                      <td>임은수 외 n명</td>
+                      <td><span class="pm-cycle">2025 하반기</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </main>
+            <aside class="end-panel" id="end-panel">
+              <button class="side-toggle" id="btn-end-toggle" title="Close endPanel" aria-label="Close endPanel">
+                <svg class="ico ico-fx ico-flip-x"><use href="#i-panel-left"/></svg>
+              </button>
+              <!-- end-panel default content (knowledge view) -->
+              <div class="end-panel__content" data-view="knowledge">
+                <div class="region">endPanel<br><span class="accent" id="w-end">260</span></div>
+              </div>
+              <!-- end-panel goals view — localSidebar 와 동일 컨텐츠 -->
+              <div class="end-panel__content" data-view="goals">
+                <nav class="local-sidebar__menu">
+                  <div class="ls-search">
+                    <svg class="ico"><use href="#i-magnifier"/></svg>
+                    <input type="text" placeholder="조직 검색" />
+                  </div>
+
+                  <div class="nav-section__header">빠른 선택</div>
+                  <div class="nav-item active"><svg class="ico"><use href="#i-target"/></svg><span class="nav-item__label">전체</span></div>
+                  <div class="nav-item"><svg class="ico"><use href="#i-building-2"/></svg><span class="nav-item__label">PD Chapter</span><span class="nav-item__pill">주조직</span></div>
+                  <div class="nav-item"><svg class="ico"><use href="#i-building-2"/></svg><span class="nav-item__label">Relation Squad</span></div>
+
+                  <div class="nav-section__header">조직별 보기</div>
+                  <div class="nav-item nav-tree__row" data-depth="0"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Product Group</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Service Tribe</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Relation Squad</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Finance Squad</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Time Tracking Squad</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Mini Squad</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Insight Squad</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Mobile Squad</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-right"/></svg><span class="nav-item__label">Product Group 직속</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">QA Team</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Security Team</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Training Center</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center BE</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center FE</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center PD</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Design System Team</span></div>
+                </nav>
+              </div>
+              <div class="side-resizer end" id="end-resizer"></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sheet (optional overlay) -->
+      <aside class="sheet" id="sheet">
+        <div class="sheet-resizer" id="sheet-resizer"></div>
+        <div class="sheet__titlebar">
+          <!-- globalSidebar 접힘 + sheet takeover 시에만 노출 — 클릭 시 GNB 펼침 -->
+          <button class="sheet__btn sheet__fold-btn" id="btn-sheet-fold" title="Open globalSidebar" aria-label="Open globalSidebar">
+            <svg class="ico"><use href="#i-menu"/></svg>
+          </button>
+          <span class="sheet__sep sheet__fold-sep" aria-hidden="true"></span>
+          <button class="sheet__btn" id="btn-sheet-prev" title="Previous" aria-label="Previous">
+            <svg class="ico"><use href="#i-chevron-up"/></svg>
+          </button>
+          <button class="sheet__btn" id="btn-sheet-next" title="Next" aria-label="Next">
+            <svg class="ico"><use href="#i-chevron-down"/></svg>
+          </button>
+          <span class="sheet__sep" aria-hidden="true"></span>
+          <span class="sheet__title">타이틀 <span class="sheet__title-size" id="w-sheet">680</span></span>
+          <!-- 풀화면(takeover) 전용 브레드크럼 — page-header 와 동일 구조, view 별 토글 -->
+          <nav class="sheet__breadcrumb page-header__breadcrumb" aria-label="Breadcrumb" data-view="knowledge">
+            <span class="breadcrumb-item" title="지식 관리">
+              <svg class="ico"><use href="#i-text-book"/></svg>
+              <span>지식 관리</span>
+            </span>
+            <svg class="breadcrumb-sep"><use href="#i-chevron-right"/></svg>
+            <span class="breadcrumb-item" title="지식 문서">
+              <svg class="ico"><use href="#i-text-document"/></svg>
+              <span>지식 문서</span>
+            </span>
+            <svg class="breadcrumb-sep"><use href="#i-chevron-right"/></svg>
+            <span class="breadcrumb-item" title="모든 문서">
+              <svg class="ico"><use href="#i-grid"/></svg>
+              <span>모든 문서</span>
+            </span>
+            <span class="breadcrumb-size">(<span class="sheet__breadcrumb-size">—</span>)</span>
+          </nav>
+          <nav class="sheet__breadcrumb page-header__breadcrumb" aria-label="Breadcrumb" data-view="goals">
+            <span class="breadcrumb-item" title="목표">
+              <svg class="ico"><use href="#i-target"/></svg>
+              <span>목표</span>
+            </span>
+            <svg class="breadcrumb-sep"><use href="#i-chevron-right"/></svg>
+            <span class="breadcrumb-item" title="전체 목표">
+              <svg class="ico"><use href="#i-target"/></svg>
+              <span>전체 목표</span>
+            </span>
+            <span class="breadcrumb-size">(<span class="sheet__breadcrumb-size">—</span>)</span>
+          </nav>
+          <span class="sheet__spacer"></span>
+          <button class="sheet__btn" id="btn-sheet-expand" title="Toggle full screen" aria-label="Toggle full screen">
+            <svg class="ico ico-expand"><use href="#i-expand-2directions"/></svg>
+            <svg class="ico ico-collapse"><use href="#i-collapse-2directions"/></svg>
+          </button>
+          <span class="sheet__sep" aria-hidden="true"></span>
+          <button class="sheet__btn" id="btn-sheet-close" title="Close sheet" aria-label="Close sheet">
+            <svg class="ico"><use href="#i-close"/></svg>
+          </button>
+        </div>
+        <div class="sheet__body">
+          <div class="region">SheetBody</div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- Resize tooltips — 사이드바 size 뱃지와 동일 (i-arrow-left-and-arrow-right + 숫자) -->
+<div class="resize-tooltip navbar" id="tt-navbar"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">220</span></div>
+<div class="resize-tooltip floating" id="tt-floating"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">220</span></div>
+<div class="resize-tooltip local" id="tt-local"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">220</span></div>
+<div class="resize-tooltip end" id="tt-end"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">260</span></div>
+
+<!-- Info bar -->
+<div class="info" id="info">vw: —</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const body = document.body;
+
+  // 쿠키 유틸 (실제 쿠키 대신 localStorage로 시뮬레이션 + 만료)
+  const COOKIE_KEY = 'APP_SHELL_GNB_FOLDED';
+  const COOKIE_TTL = 7 * 24 * 60 * 60 * 1000;  // 7일
+  const readCookie = () => {
+    try {
+      const raw = localStorage.getItem(COOKIE_KEY);
+      if (!raw) return null;
+      const { value, expires } = JSON.parse(raw);
+      if (Date.now() > expires) { localStorage.removeItem(COOKIE_KEY); return null; }
+      return value;
+    } catch(e) { return null; }
+  };
+  const writeCookie = (value) => {
+    localStorage.setItem(COOKIE_KEY, JSON.stringify({
+      value, expires: Date.now() + COOKIE_TTL
+    }));
+  };
+  const clearCookie = () => localStorage.removeItem(COOKIE_KEY);
+
+  // AppNavBar 자동 접힘: viewport 기반
+  const NAV_FOLD_BREAK = 1024;   // 미만 AppNavBar 자동 접힘 (vw < 1024)
+  // Aside 전환: main(PageMain) 확보 폭 기반 (viewport 의존 X)
+  const MAIN_MIN = 400;          // mainAll ≤ 이 값 → narrow mutex 모드 (셋 중 하나만 visible)
+  const NAV_MIN = 180, NAV_MAX = 260;
+  const SIDE_MIN = 180, SIDE_MAX = 360;
+  const SHEET_MIN = 500, SHEET_MAX = 900;
+  // aside effective clamp (뷰포트 의존 없이 drag 범위만 enforce)
+  const clampSide = (userW) => Math.max(SIDE_MIN, Math.min(SIDE_MAX, userW));
+
+  // 쿠키 값: 'folded' | 'unfolded' | null
+  // cookiePref: wide viewport 에서만 의미 있는 persistent 상태
+  // narrow mutex 정책 — main < 400 이면 cascade auto-close (end → local → global) 또는 mutex (narrowActive)
+
+  // 컨트롤 상태 persistence (refresh 시 유지)
+  const PERSIST_KEY = 'FX_PROTOTYPE_STATE';
+  const STATE_VERSION = '2026-04-27-v14';  /* sheet drag max revert + persisted state clear */
+  try {
+    if (localStorage.getItem('FX_PROTOTYPE_STATE_VERSION') !== STATE_VERSION) {
+      localStorage.removeItem(PERSIST_KEY);
+      localStorage.removeItem('APP_SHELL_GNB_FOLDED');
+      localStorage.setItem('FX_PROTOTYPE_STATE_VERSION', STATE_VERSION);
+    }
+  } catch (e) {}
+  const loadPersisted = () => {
+    try {
+      const raw = localStorage.getItem(PERSIST_KEY);
+      if (!raw) return {};
+      return JSON.parse(raw) || {};
+    } catch (e) { return {}; }
+  };
+  const savePersisted = (s) => {
+    try {
+      const persistable = {
+        navbarWidth: s.navbarWidth,
+        floatingWidth: s.floatingWidth,
+        localWidth: s.localWidth,
+        endWidth: s.endWidth,
+        sheetWidth: s.sheetWidth,
+        localSidebarOpen: s.localSidebarOpen,
+        endPanelOpen: s.endPanelOpen,
+        localUsed: s.localUsed,
+        endUsed: s.endUsed,
+        sheetOpen: s.sheetOpen,
+        sheetExpanded: s.sheetExpanded,
+        localAutoFolded: s.localAutoFolded,
+        globalAutoFolded: s.globalAutoFolded,
+        headerMode: s.headerMode,
+        cookiePref: s.cookiePref,
+        localView: s.localView,
+        gnbGoalsExpanded: s.gnbGoalsExpanded,
+      };
+      localStorage.setItem(PERSIST_KEY, JSON.stringify(persistable));
+    } catch (e) {}
+  };
+  const persisted = loadPersisted();
+
+  const state = {
+    cookiePref: persisted.cookiePref ?? null,
+    navbarWidth: persisted.navbarWidth ?? 220,
+    floatingWidth: persisted.floatingWidth ?? 220,
+    localWidth: persisted.localWidth ?? 220,
+    endWidth: persisted.endWidth ?? 260,
+    sheetWidth: persisted.sheetWidth ?? 680,
+    localSidebarOpen: persisted.localSidebarOpen ?? true,
+    endPanelOpen: persisted.endPanelOpen ?? true,
+    localUsed: persisted.localUsed ?? true,    // localSidebar 사용/미사용 (옵션 — 글로벌은 필수)
+    endUsed: persisted.endUsed ?? true,        // endPanel 사용/미사용 (옵션)
+    sheetOpen: persisted.sheetOpen ?? false,
+    sheetExpanded: persisted.sheetExpanded ?? false,  // 사용자 expand 클릭 시 takeover 강제
+    // auto-fold 추적: true 면 시스템이 접은 것 → 공간 생기면 자동으로 다시 펼침
+    //                 false 면 사용자가 직접 접은 것 → 자동으로 펼치지 않음
+    localAutoFolded: persisted.localAutoFolded ?? false,
+    globalAutoFolded: persisted.globalAutoFolded ?? false,
+    floatingShown: false,
+    headerMode: persisted.headerMode ?? 'lnb',
+    // narrow mutex: mainAll < 400 일 때 global/local/end 중 하나만 보임
+    narrowActive: 'none',  // 'none' | 'global' | 'local' | 'end'
+    narrowMode: false,     // 직전 frame 의 narrow 여부 (transition 감지용)
+    // local sidebar 의 view 모드 ('knowledge' | 'goals')
+    localView: persisted.localView ?? 'knowledge',
+    // globalSidebar 의 목표 메뉴 펼침 상태 (default: 접힘)
+    gnbGoalsExpanded: persisted.gnbGoalsExpanded ?? false,
+  };
+
+  // global fold 의도 — wide vw 에서의 cookie 값만 반영 (narrow 는 cascade/mutex 에서 처리)
+  const isFolded = () => state.cookiePref === 'folded';
+
+  const apply = () => {
+    // 정책: mainAll < 400 이면 narrow.
+    //   narrowActive='none' → cascade auto-close 순서: end → local → global (main ≥ 400 되면 stop)
+    //   narrowActive ∈ {'global'|'local'|'end'} → mutex (그 하나만 visible)
+    //   wide (mainAll ≥ 400) → 사용자 prefs 그대로
+    const navW = state.navbarWidth;
+    const localW = state.localUsed ? clampSide(state.localWidth) : 0;
+    const endW = state.endUsed ? clampSide(state.endWidth) : 0;
+
+    // ── auto-unfold: 시스템이 접은 사이드바는 공간 생기면 자동 복원 ──
+    const localUnfoldOk = () => {
+      const navC = isFolded() ? 0 : navW;
+      const endC = (state.endUsed && state.endPanelOpen) ? endW : 0;
+      if (state.sheetOpen) {
+        // sheet 열림: main 가시 ≥ 100 보장 가능?
+        return innerWidth - navC - localW - state.sheetWidth >= 100;
+      }
+      // sheet 닫힘: mainAll ≥ 400 보장 가능?
+      return innerWidth - navC - localW - endC >= MAIN_MIN;
+    };
+    const globalUnfoldOk = () => {
+      const localC = (state.localUsed && state.localSidebarOpen) ? localW : 0;
+      const endC = (state.endUsed && state.endPanelOpen) ? endW : 0;
+      if (state.sheetOpen) {
+        return innerWidth - navW - localC - state.sheetWidth >= 100;
+      }
+      return innerWidth - navW - localC - endC >= MAIN_MIN;
+    };
+    if (state.localAutoFolded && state.localUsed && !state.localSidebarOpen && localUnfoldOk()) {
+      state.localSidebarOpen = true;
+      state.localAutoFolded = false;
+    }
+    if (state.globalAutoFolded && isFolded() && globalUnfoldOk()) {
+      state.cookiePref = 'unfolded';
+      writeCookie('unfolded');
+      state.globalAutoFolded = false;
+    }
+
+    const wantedG = !isFolded();                                    // 사용자가 global 펼침 원함?
+    const wantedL = state.localUsed && state.localSidebarOpen;
+    const wantedE = state.endUsed && state.endPanelOpen;
+    const mainAll = innerWidth - (wantedG?navW:0) - (wantedL?localW:0) - (wantedE?endW:0);
+    const narrow = mainAll < MAIN_MIN;
+
+    // narrow 진입/이탈 transition — narrowActive 초기화
+    if (narrow !== state.narrowMode) {
+      state.narrowActive = 'none';
+      state.narrowMode = narrow;
+    }
+
+    // 실제 visibility 결정
+    let actualG, actualL, actualE;
+    if (!narrow) {
+      // wide — 사용자 prefs 그대로
+      actualG = wantedG; actualL = wantedL; actualE = wantedE;
+    } else if (state.narrowActive === 'none') {
+      // cascade auto-close: end → local → global
+      let g = wantedG, l = wantedL, e = wantedE;
+      const calcMain = () => innerWidth - (g?navW:0) - (l?localW:0) - (e?endW:0);
+      if (calcMain() < MAIN_MIN && e) e = false;
+      if (calcMain() < MAIN_MIN && l) l = false;
+      if (calcMain() < MAIN_MIN && g) g = false;
+      actualG = g; actualL = l; actualE = e;
+    } else {
+      // mutex — narrowActive 만 visible
+      actualG = state.narrowActive === 'global';
+      actualL = state.narrowActive === 'local';
+      actualE = state.narrowActive === 'end';
+    }
+
+    // Sheet 가 열려있을 때 추가 cascade fold — main visible < 100 이면 사이드바 차례로 접음
+    // (sheet 드래그 외에 viewport 변경/사이드바 펼침 등 모든 apply() 시점에 적용)
+    // auto-fold 면 state.{local,global}AutoFolded = true 마킹 → 공간 생기면 다시 자동 펼침
+    if (state.sheetOpen) {
+      const calcMainVis = () => innerWidth - (actualG ? navW : 0) - (actualL ? localW : 0) - state.sheetWidth;
+      if (calcMainVis() < 100 && actualL) {
+        actualL = false;
+        state.localSidebarOpen = false;
+        state.localAutoFolded = true;
+      }
+      if (calcMainVis() < 100 && actualG) {
+        actualG = false;
+        state.cookiePref = 'folded';
+        writeCookie('folded');
+        state.globalAutoFolded = true;
+      }
+    }
+
+    const folded = !actualG;
+    body.classList.toggle('folded', folded);
+    body.classList.toggle('narrow', narrow);
+    body.classList.toggle('narrow-show-local', narrow && state.narrowActive === 'local');
+    body.classList.toggle('narrow-show-end',   narrow && state.narrowActive === 'end');
+    body.classList.toggle('narrow-show-global', narrow && state.narrowActive === 'global');
+    // layout contribution
+    const navContribution = actualG ? navW : 0;
+    const localContribution = actualL ? localW : 0;
+    const endContribution = actualE ? endW : 0;
+    body.classList.remove('narrow-vw', 'local-auto-folded', 'asides-hidden', 'local-overlay', 'end-overlay', 'end-hidden', 'narrow-show-nav');
+    // no-local-sidebar / no-end-panel = 실제 visibility 기준
+    body.classList.toggle('no-local-sidebar', !actualL);
+    body.classList.toggle('no-end-panel', !actualE);
+    body.classList.toggle('local-disabled', !state.localUsed);
+    body.classList.toggle('end-disabled', !state.endUsed);
+    body.classList.toggle('sheet-open', state.sheetOpen);
+    body.classList.toggle('header-lnb', state.headerMode === 'lnb');
+    body.classList.toggle('local-view-goals', state.localView === 'goals');
+    body.classList.toggle('local-view-knowledge', state.localView === 'knowledge');
+    body.classList.toggle('gnb-goals-expanded', !!state.gnbGoalsExpanded);
+
+    // sheet 가 열려있고 사이드바가 펼쳐져 있을 때 main 100 확보 — sheet width 자동 축소
+    // (드래그로 사이드바 자동 접힘 후 사용자가 수동 펼치면 시트가 cap 까지 줄어듦)
+    if (state.sheetOpen) {
+      const sheetCap = innerWidth - navContribution - localContribution - 100;
+      if (sheetCap >= SHEET_MIN && state.sheetWidth > sheetCap) {
+        state.sheetWidth = sheetCap;
+      }
+    }
+
+    // sheet takeover: 뷰포트가 desired sheet 폭보다 좁으면 전체 뷰포트 덮음 (Notion peek 방식)
+    // Sheet takeover 정책 — 두 모드 분리
+    //   AUTO   : ① state.sheetWidth >= innerWidth  OR
+    //            ② innerWidth - 100 < SHEET_MIN  OR
+    //            ③ 사이드바 + sheet 가 겹쳐서 layout 깨지는 경우 (시각적 overlap 방어)
+    //            → vw 가 작아서 강제 풀 vw 덮음 (globalSidebar 포함)
+    //   MANUAL : state.sheetExpanded === true   → 사용자 expand 클릭, globalSidebar 제외 영역
+    //   동시 충족 시 AUTO 우선
+    const sheetVsSidebarsOverlap = (innerWidth - state.sheetWidth) < (navContribution + localContribution);
+    const sheetTakeoverAuto = state.sheetOpen && (
+      state.sheetWidth >= innerWidth ||
+      innerWidth - 100 < SHEET_MIN ||
+      sheetVsSidebarsOverlap
+    );
+    const sheetTakeoverManual = state.sheetOpen && state.sheetExpanded && !sheetTakeoverAuto;
+    const sheetTakeover = sheetTakeoverAuto || sheetTakeoverManual;
+    const sheetEff = sheetTakeoverAuto
+      ? innerWidth
+      : sheetTakeoverManual
+        ? (folded ? innerWidth : innerWidth - state.navbarWidth)
+        : Math.min(state.sheetWidth, innerWidth);
+    body.classList.toggle('sheet-takeover', sheetTakeover);
+    body.classList.toggle('sheet-takeover-auto', sheetTakeoverAuto);
+    body.classList.toggle('sheet-takeover-manual', sheetTakeoverManual);
+    body.classList.toggle('floating-shown', folded && state.floatingShown);
+
+    // Sizes via CSS vars
+    root.style.setProperty('--navbar', state.navbarWidth + 'px');
+    root.style.setProperty('--navbar-min', NAV_MIN + 'px');
+    root.style.setProperty('--navbar-max', NAV_MAX + 'px');
+    root.style.setProperty('--floating-navbar-w', state.floatingWidth + 'px');
+
+    // Asides effective width (drag 범위만 clamp, 뷰포트 의존 없음)
+    const localEff = clampSide(state.localWidth);
+    const endEff = clampSide(state.endWidth);
+    root.style.setProperty('--local-sidebar', localEff + 'px');
+    root.style.setProperty('--end-panel', endEff + 'px');
+    root.style.setProperty('--side-min', SIDE_MIN + 'px');
+    root.style.setProperty('--side-max', SIDE_MAX + 'px');
+    // Sheet effective width (vw 보다 크면 vw 로 clamp)
+    root.style.setProperty('--sheet', sheetEff + 'px');
+
+    // Labels
+    document.getElementById('w-navbar').textContent = Math.round(state.navbarWidth);
+    document.getElementById('w-floating').textContent = Math.round(state.floatingWidth);
+    const localLabel = localEff < state.localWidth
+      ? Math.round(localEff) + ' / ' + Math.round(state.localWidth)
+      : String(Math.round(state.localWidth));
+    document.getElementById('w-local').textContent = localLabel;
+    const wLocalLnb = document.getElementById('w-local-lnb');
+    if (wLocalLnb) wLocalLnb.textContent = localLabel;
+    const wLocalLnbGoals = document.getElementById('w-local-lnb-goals');
+    if (wLocalLnbGoals) wLocalLnbGoals.textContent = localLabel;
+    document.getElementById('w-end').textContent = endEff < state.endWidth
+      ? Math.round(endEff) + ' / ' + Math.round(state.endWidth)
+      : Math.round(state.endWidth);
+    // sheet 사이즈 표기 — takeover 시 effective(=innerWidth), 아니면 state.sheetWidth
+    const sheetW = sheetTakeover ? Math.round(sheetEff) : Math.round(state.sheetWidth);
+    const wSheet = document.getElementById('w-sheet');
+    if (wSheet) wSheet.textContent = sheetW;
+    document.querySelectorAll('.sheet__breadcrumb-size').forEach(el => { el.textContent = sheetW; });
+
+    // PageMain 실측 width (flex:1 의 렌더 결과)
+    requestAnimationFrame(() => {
+      const main = document.getElementById('page-main');
+      const wMain = document.getElementById('w-main');
+      const wMainBc = document.getElementById('w-main-bc');
+      const wMainBcGoals = document.getElementById('w-main-bc-goals');
+      if (main) {
+        const px = Math.round(main.getBoundingClientRect().width);
+        if (wMain) wMain.textContent = px;
+        if (wMainBc) wMainBc.textContent = px;
+        if (wMainBcGoals) wMainBcGoals.textContent = px;
+      }
+    });
+
+    // 컨트롤 상태 persist (refresh 시 유지)
+    savePersisted(state);
+
+    // Broadcast state to parent (index.html의 control에서 active 반영)
+    try {
+      window.parent.postMessage({
+        type: 'fx-state',
+        folded,
+        localSidebarOpen: state.localSidebarOpen,
+        endPanelOpen: state.endPanelOpen,
+        localUsed: state.localUsed,
+        endUsed: state.endUsed,
+        sheetOpen: state.sheetOpen,
+        headerMode: state.headerMode,
+      }, '*');
+    } catch(e) {}
+
+    // Info
+    let foldedReason;
+    if (narrow) {
+      foldedReason = state.narrowActive === 'global'
+        ? 'unfolded (narrow mutex active)'
+        : (folded ? 'folded (narrow cascade)' : 'unfolded (narrow cascade)');
+    } else if (folded) {
+      foldedReason = 'folded (cookie, 7d)';
+    } else {
+      foldedReason = state.cookiePref === 'unfolded' ? 'unfolded (cookie, 7d)' : 'unfolded';
+    }
+    const infoParts = [
+      `vw: ${innerWidth} · dpr: ${devicePixelRatio}`,
+      `globalSidebar: ${folded ? 'folded 46px' : Math.round(state.navbarWidth) + 'px (' + NAV_MIN + '~' + NAV_MAX + ')'}`,
+      foldedReason,
+      state.floatingShown && folded ? `floating: ${Math.round(state.floatingWidth)}px` : null,
+      `localSidebar: ${!state.localUsed
+          ? 'disabled (option off)'
+          : narrow
+              ? (state.narrowActive === 'local' ? Math.round(localEff) + 'px (mutex active)' : 'hidden (mutex)')
+              : (state.localSidebarOpen ? Math.round(localEff) + 'px' : '—')}`,
+      `endPanel: ${!state.endUsed
+          ? 'disabled (option off)'
+          : narrow
+              ? (state.narrowActive === 'end' ? Math.round(endEff) + 'px (mutex active)' : 'hidden (mutex)')
+              : (state.endPanelOpen ? Math.round(endEff) + 'px' : '—')}`,
+      narrow ? `narrow mutex (main≤${MAIN_MIN}): active=${state.narrowActive}` : null,
+      state.sheetOpen
+        ? (sheetTakeover
+            ? `sheet: ${Math.round(sheetEff)}/${Math.round(state.sheetWidth)}px (takeover)`
+            : `sheet: ${Math.round(state.sheetWidth)}px (overlay)`)
+        : null,
+    ].filter(Boolean);
+    document.getElementById('info').textContent = infoParts.join(' · ');
+  };
+
+  // ─── Resize tooltip helper ───
+  const showTT = (kind, text, x, y) => {
+    const tt = document.getElementById('tt-' + kind);
+    if (!tt) return;  // sheet 처럼 tooltip 엘리먼트가 없는 경우 안전 종료
+    const valEl = tt.querySelector('.resize-tooltip__value');
+    if (valEl) valEl.textContent = text;
+    // viewport 가장자리 클립 방지 — 우측 / 하단으로 넘어가면 cursor 좌상단으로 미러링
+    const ttW = tt.offsetWidth || 60;
+    const ttH = tt.offsetHeight || 22;
+    const left = (x + 14 + ttW > innerWidth) ? Math.max(8, x - 14 - ttW) : (x + 14);
+    const top  = (y + 14 + ttH > innerHeight) ? Math.max(8, y - 14 - ttH) : (y + 14);
+    tt.style.left = left + 'px';
+    tt.style.top = top + 'px';
+  };
+  // drag 시작 전, 이전 drag state 완전 초기화 (pointerup 누락 대비)
+  const clearAllDragState = () => {
+    body.classList.remove('navbar-dragging', 'floating-dragging', 'local-dragging', 'end-dragging', 'sheet-dragging');
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+  };
+  // 페이지 로드 시 stale dragging state 정리
+  clearAllDragState();
+
+  // ─── Fold button / Manual fold toggle ───
+  // 규칙:
+  //  · vw >= 1024 (wide): 수동 fold/unfold → 쿠키에 저장 (7일)
+  //  · vw < 1024 (narrow): auto-fold 가 default. 수동 unfold 는 session 한정 (쿠키 X)
+  const toggleFold = () => {
+    if (state.narrowMode) {
+      // narrow mutex — fold 버튼은 global 의 narrowActive 토글
+      state.narrowActive = (state.narrowActive === 'global') ? 'none' : 'global';
+    } else {
+      // wide: cookie 에 상태 저장
+      const currentlyFolded = isFolded();
+      const next = currentlyFolded ? 'unfolded' : 'folded';
+      state.cookiePref = next;
+      writeCookie(next);
+    }
+    // 사용자 명시 fold/unfold → autoFolded 해제
+    state.globalAutoFolded = false;
+    state.floatingShown = false;
+    apply();
+  };
+  document.getElementById('btn-fold').addEventListener('click', toggleFold);
+  document.getElementById('btn-fold-floating').addEventListener('click', toggleFold);
+  document.getElementById('btn-sheet-close').addEventListener('click', () => {
+    state.sheetOpen = false;
+    state.sheetExpanded = false;  // close 시 takeover 도 리셋
+    apply();
+  });
+  document.getElementById('btn-sheet-expand').addEventListener('click', () => {
+    state.sheetExpanded = !state.sheetExpanded;
+    apply();
+  });
+  // sheet 타이틀바 fold 버튼 — globalSidebar 토글 (folded 상태에서 takeover 시 노출)
+  const sheetFoldBtn = document.getElementById('btn-sheet-fold');
+  sheetFoldBtn.addEventListener('click', () => {
+    // viewport 자동 takeover (auto) 일 땐 vw 가 좁아서 inline 으로 펼치면 layout 깨짐
+    // → 호버 floating 만 허용, click 으로 펼치는 동작은 무시
+    if (body.classList.contains('sheet-takeover-auto')) return;
+    toggleFold();
+  });
+  // hover 시 floating-navbar 표시 (sheet 가 GNB 영역 덮고 있는 상태에서 메뉴 접근)
+  sheetFoldBtn.addEventListener('pointerenter', () => {
+    if (!isBodyFolded()) return;
+    cancelHide();
+    state.floatingShown = true;
+    apply();
+  });
+  sheetFoldBtn.addEventListener('pointerleave', (e) => {
+    if (!isBodyFolded()) return;
+    const to = e.relatedTarget;
+    if (to && floatingNav.contains(to)) return;
+    scheduleHide();
+  });
+  // floating-navbar nav-item 클릭 → sheet 닫고 해당 메뉴로 이동
+  // (floatingNav 는 아래에서 declare 되므로 직접 query)
+  document.getElementById('floating-navbar').addEventListener('click', (e) => {
+    const navItem = e.target.closest('.nav-item');
+    if (!navItem) return;
+    if (state.sheetOpen && body.classList.contains('sheet-takeover')) {
+      state.sheetOpen = false;
+      state.sheetExpanded = false;
+      state.floatingShown = false;
+      apply();
+    }
+  });
+  // sheet 외부 클릭 시 닫기 (light-dismiss)
+  // 단, sheet 내부 / 메인 테이블 행 / 사이드바 접펼 관련 버튼들은 dismiss 제외 (sheet 유지)
+  const sheetEl = document.getElementById('sheet');
+  const dismissExcludeSelector = [
+    '#btn-fold',
+    '#btn-fold-floating',
+    '.floating-navbar',
+    '#btn-lnb-reopen',           // page-header 의 local 펼침 버튼
+    '#btn-page-end-toggle',      // page-header 의 end 토글 버튼
+    '#btn-local-toggle',         // local-sidebar 내부 close 버튼
+    '#btn-end-toggle',           // end-panel 내부 close 버튼
+    '#btn-local-reopen',         // page-main 엣지 local 펼침 버튼
+    '#btn-end-reopen',           // page-main 엣지 end 펼침 버튼
+    '.side-toggle',              // 사이드바 내부 toggle 류
+    '.side-reopen',              // page-main 엣지 reopen 류
+    '.navbar-resizer',           // globalSidebar resize 핸들
+    '.floating-navbar-resizer',  // floating navbar resize 핸들
+    '.side-resizer',             // local / end resize 핸들
+  ].join(', ');
+  document.addEventListener('pointerdown', (e) => {
+    if (!state.sheetOpen) return;
+    if (sheetEl.contains(e.target)) return;
+    if (e.target.closest('.pm-table tbody tr')) return;
+    if (e.target.closest(dismissExcludeSelector)) return;
+    state.sheetOpen = false;
+    apply();
+  });
+  // 메인 테이블 행 클릭 → sheet 열기 (체크박스/토글/more/caret 버튼 제외)
+  document.querySelectorAll('.pm-table tbody').forEach(tbody => {
+    tbody.addEventListener('click', (e) => {
+      if (e.target.closest('.pm-checkbox, .pm-toggle, .pm-more-btn, .pm-goals__caret')) return;
+      const tr = e.target.closest('tr');
+      if (!tr) return;
+      state.sheetOpen = true;
+      apply();
+    });
+  });
+  // narrow 일 때는 narrowActive (mutex), wide 일 때는 사용자 prefs 토글
+  const toggleLocal = () => {
+    if (state.narrowMode) {
+      state.narrowActive = (state.narrowActive === 'local') ? 'none' : 'local';
+    } else {
+      state.localSidebarOpen = !state.localSidebarOpen;
+    }
+    state.localAutoFolded = false;  // 사용자 명시 → auto 해제
+    apply();
+  };
+  const openLocal = () => {
+    if (state.narrowMode) state.narrowActive = 'local';
+    else state.localSidebarOpen = true;
+    state.localAutoFolded = false;  // 사용자 명시 → auto 해제
+    apply();
+  };
+  const toggleEnd = () => {
+    if (state.narrowMode) {
+      state.narrowActive = (state.narrowActive === 'end') ? 'none' : 'end';
+    } else {
+      state.endPanelOpen = !state.endPanelOpen;
+    }
+    apply();
+  };
+  const openEnd = () => {
+    if (state.narrowMode) state.narrowActive = 'end';
+    else state.endPanelOpen = true;
+    apply();
+  };
+  document.getElementById('btn-local-toggle').addEventListener('click', toggleLocal);
+  document.getElementById('btn-end-toggle').addEventListener('click', toggleEnd);
+  document.getElementById('btn-local-reopen').addEventListener('click', openLocal);
+  document.getElementById('btn-end-reopen').addEventListener('click', openEnd);
+  document.getElementById('btn-lnb-reopen').addEventListener('click', openLocal);
+  document.getElementById('btn-page-end-toggle').addEventListener('click', toggleEnd);
+
+  // ─── globalSidebar nav-item 클릭 ───
+  // goals-parent  → 펼침 토글 (chevron right ↔ down, sub-items show/hide)
+  // goals-all     → localView='goals'
+  // knowledge-docs → localView='knowledge'
+  // goals-my, goals-members → 링크 없음 (hover only)
+  const gnbToView = (key) => {
+    if (key === 'goals-all') return 'goals';
+    if (key === 'knowledge-docs') return 'knowledge';
+    return null;
+  };
+  const syncGnbActive = (key) => {
+    document.querySelectorAll('[data-gnb]').forEach(el => {
+      el.classList.toggle('active', el.dataset.gnb === key);
+    });
+  };
+  document.querySelectorAll('[data-gnb]').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.gnb;
+      if (key === 'goals-parent') {
+        state.gnbGoalsExpanded = !state.gnbGoalsExpanded;
+        apply();
+        return;
+      }
+      const targetView = gnbToView(key);
+      if (targetView) {
+        state.localView = targetView;
+        syncGnbActive(key);
+        apply();
+      }
+    });
+  });
+  // 초기 active 동기화
+  if (state.localView === 'goals') syncGnbActive('goals-all');
+  else syncGnbActive('knowledge-docs');
+
+  // ─── parent(index.html)로부터 toggle 명령 수신 ───
+  window.addEventListener('message', (e) => {
+    if (!e.data || e.data.type !== 'fx-toggle') return;
+    switch (e.data.target) {
+      case 'fold': toggleFold(); break;
+      // localSidebar / endPanel 은 옵션 → toolbar 에서는 사용/미사용 토글 (접기 아님)
+      case 'local':
+        state.localUsed = !state.localUsed;
+        if (!state.localUsed && state.narrowActive === 'local') state.narrowActive = 'none';
+        apply();
+        break;
+      case 'end':
+        state.endUsed = !state.endUsed;
+        if (!state.endUsed && state.narrowActive === 'end') state.narrowActive = 'none';
+        apply();
+        break;
+      case 'sheet': state.sheetOpen = !state.sheetOpen; apply(); break;
+      case 'local-none':
+        state.localSidebarOpen = false;
+        apply();
+        break;
+      case 'header-start':
+        state.localSidebarOpen = true;
+        state.headerMode = 'start';
+        apply();
+        break;
+      case 'header-lnb':
+        state.localSidebarOpen = true;
+        state.headerMode = 'lnb';
+        apply();
+        break;
+    }
+  });
+
+  // ─── Floating navbar hover (folded state) ───
+  const appShell = document.getElementById('app-shell');
+  const foldBtn = document.getElementById('btn-fold');
+  const floatingNav = document.getElementById('floating-navbar');
+  const navbarEl = document.getElementById('app-navbar');
+
+  let hoverTimer;
+  const isFloatingDragging = () => body.classList.contains('floating-dragging');
+  const scheduleHide = () => {
+    // 드래그 중에는 숨김 예약하지 않음 (영역 벗어나도 유지)
+    if (isFloatingDragging()) return;
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => {
+      state.floatingShown = false;
+      apply();
+    }, 120);
+  };
+  const cancelHide = () => clearTimeout(hoverTimer);
+
+  // fold button hover → show floating (visually folded 상태에서만)
+  // body.folded 는 cascade/mutex/cookie 어느 경로로든 fold 됐을 때 set 됨
+  const isBodyFolded = () => body.classList.contains('folded');
+  foldBtn.addEventListener('pointerenter', () => {
+    if (!isBodyFolded()) return;
+    cancelHide();
+    state.floatingShown = true;
+    apply();
+  });
+  foldBtn.addEventListener('pointerleave', (e) => {
+    if (!isBodyFolded()) return;
+    const to = e.relatedTarget;
+    if (to && floatingNav.contains(to)) return;
+    scheduleHide();
+  });
+  floatingNav.addEventListener('pointerenter', cancelHide);
+  floatingNav.addEventListener('pointerleave', (e) => {
+    const to = e.relatedTarget;
+    if (to && foldBtn.contains(to)) return;
+    if (to && sheetFoldBtn && sheetFoldBtn.contains(to)) return;
+    scheduleHide();
+  });
+
+  // ─── 공통 drag 헬퍼 ───
+  // document-level pointermove/pointerup 로 캡처 누락 없이 cleanup 보장
+  const attachDrag = (resEl, kind, getStartW, setW, computeW, minV, maxV, labelFn) => {
+    resEl.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      clearAllDragState();
+      resEl.classList.add('dragging');
+      body.classList.add(kind + '-dragging');
+      const startX = e.clientX;
+      const startW = getStartW();
+      const onMove = (ev) => {
+        let w = computeW(startW, ev.clientX - startX);
+        w = Math.max(minV, Math.min(maxV, w));
+        setW(w);
+        apply();
+        showTT(kind, labelFn(Math.round(w)), ev.clientX, ev.clientY);
+      };
+      const onUp = () => {
+        resEl.classList.remove('dragging');
+        body.classList.remove(kind + '-dragging');
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    });
+  };
+
+  // ─── AppNavBar resize (unfolded) ───
+  const navRes = document.getElementById('navbar-resizer');
+  navRes.addEventListener('pointerdown', (e) => {
+    if (body.classList.contains('folded')) { e.stopPropagation(); return; }
+  }, true);
+  attachDrag(navRes, 'navbar',
+    () => state.navbarWidth,
+    (w) => state.navbarWidth = w,
+    (sw, dx) => sw + dx,
+    NAV_MIN, NAV_MAX,
+    (w) => String(w));
+
+  // ─── localSidebar resize (우측 엣지) — drag 하면 userModified 로 마크 ───
+  const localRes = document.getElementById('local-resizer');
+  attachDrag(localRes, 'local',
+    () => state.localWidth,
+    (w) => { state.localWidth = w; },
+    (sw, dx) => sw + dx,
+    SIDE_MIN, SIDE_MAX,
+    (w) => String(w));
+
+  // ─── endPanel resize (좌측 엣지 — drag left = expand) ───
+  // endPanel 는 narrow-vw 에서 floating 이 되며 그 상태에서도 resize 가능
+  const endRes = document.getElementById('end-resizer');
+  attachDrag(endRes, 'end',
+    () => state.endWidth,
+    (w) => state.endWidth = w,
+    (sw, dx) => sw - dx,   // 왼쪽 드래그 = expand
+    SIDE_MIN, SIDE_MAX,
+    (w) => String(w));
+
+  // ─── Floating navbar resize ───
+  const floatRes = document.getElementById('floating-navbar-resizer');
+  floatRes.addEventListener('pointerdown', () => cancelHide(), true);
+  attachDrag(floatRes, 'floating',
+    () => state.floatingWidth,
+    (w) => state.floatingWidth = w,
+    (sw, dx) => sw + dx,
+    NAV_MIN, NAV_MAX,
+    (w) => String(w));
+  // 드래그 종료 시 포인터가 floating/foldBtn 밖이면 hide 예약 (드래그 중엔 guard 로 보호됨)
+  document.addEventListener('pointerup', (e) => {
+    if (!isBodyFolded() || !state.floatingShown) return;
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    if (!under) return;
+    if (foldBtn.contains(under) || floatingNav.contains(under)) return;
+    scheduleHide();
+  });
+
+  // ─── Sheet resize (좌측 엣지 — drag left = expand) ───
+  // 정책:
+  //   - main 이 항상 100 이상 보이도록 sheet max 동적 계산
+  //   - 시트 키울 때: main < 100 → cascade fold (local → global)
+  //   - 시트 줄일 때: drag 로 접힌 사이드는 cascade unfold (global → local) — 사용자 의도 복원
+  //   - 전체화면(takeover) 모드일 때 drag 비활성 — CSS 로 resizer hide + JS 가드
+  //   - 모두 접힌 후엔 max = innerWidth - 100
+  const sheetRes = document.getElementById('sheet-resizer');
+  // takeover 시점에 drag 시작 차단 (capture phase 로 attachDrag 의 pointerdown 보다 먼저 가로채기)
+  sheetRes.addEventListener('pointerdown', (e) => {
+    if (body.classList.contains('sheet-takeover')) { e.stopPropagation(); }
+  }, true);
+  // 드래그 세션 동안 'sheet 가 접은 사이드' 추적 (시트 줄일 때 복원용)
+  let sheetDragFoldedLocal = false;
+  let sheetDragFoldedGlobal = false;
+  sheetRes.addEventListener('pointerdown', () => {
+    sheetDragFoldedLocal = false;
+    sheetDragFoldedGlobal = false;
+  });
+  attachDrag(sheetRes, 'sheet',
+    () => state.sheetWidth,
+    (w) => state.sheetWidth = w,
+    (sw, dx) => {
+      let w = sw - dx;
+      const localFullW = clampSide(state.localWidth);
+      const navFullW = state.navbarWidth;
+      const computeCap = () => {
+        const nav = isFolded() ? 0 : navFullW;
+        const loc = (state.localUsed && state.localSidebarOpen) ? localFullW : 0;
+        return innerWidth - nav - loc - 100;
+      };
+
+      // 키움 → cascade fold (local → global)
+      if (w > computeCap() && state.localUsed && state.localSidebarOpen) {
+        state.localSidebarOpen = false;
+        sheetDragFoldedLocal = true;
+        state.localAutoFolded = true;
+      }
+      if (w > computeCap() && !isFolded()) {
+        state.cookiePref = 'folded';
+        writeCookie('folded');
+        sheetDragFoldedGlobal = true;
+        state.globalAutoFolded = true;
+      }
+
+      // 줄임 → drag 로 접힌 거 cascade unfold (global → local)
+      // global 부터 펼침 시도: global 펼친 후의 cap 이 w 보다 크면 펼쳐도 OK
+      if (sheetDragFoldedGlobal && isFolded()) {
+        const loc = (state.localUsed && state.localSidebarOpen) ? localFullW : 0;
+        const capIfGlobalUnfolded = innerWidth - navFullW - loc - 100;
+        if (w <= capIfGlobalUnfolded) {
+          state.cookiePref = 'unfolded';
+          writeCookie('unfolded');
+          sheetDragFoldedGlobal = false;
+          state.globalAutoFolded = false;
+        }
+      }
+      if (sheetDragFoldedLocal && state.localUsed && !state.localSidebarOpen) {
+        const nav = isFolded() ? 0 : navFullW;
+        const capIfLocalUnfolded = innerWidth - nav - localFullW - 100;
+        if (w <= capIfLocalUnfolded) {
+          state.localSidebarOpen = true;
+          sheetDragFoldedLocal = false;
+          state.localAutoFolded = false;
+        }
+      }
+
+      return Math.min(w, computeCap());
+    },
+    SHEET_MIN, 99999,
+    (w) => String(w));
+
+  window.addEventListener('resize', apply);
+  apply();
+})();
+</script>
+</body>
+</html>

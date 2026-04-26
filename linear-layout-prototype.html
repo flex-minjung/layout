@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>Linear Layout Prototype</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root {
+    --sidebar: 330px;
+    --sidebar-min: 240px;
+    --sidebar-max: 600px;
+
+    --col-width: 320px;       /* assignee column */
+    --col-min: 240px;
+    --col-max: 520px;
+
+    --row-header: 44px;       /* status row header */
+    --row-cell-h: 140px;      /* status row body cell */
+    --row-h-min: 80px;
+    --row-h-max: 360px;
+
+    --hidden-cols: 330px;
+    --hidden-min: 240px;
+    --hidden-max: 480px;
+
+    --main-gap: 8px;
+    --main-radius: 10px;
+
+    --agent-popup-w: 400px;
+    --agent-popup-h: 600px;
+
+    --bg-sidebar: #f5f5f7;
+    --bg-main: #ffffff;
+    --bg-page: #e9e9ed;
+    --border: #e4e4e7;
+    --border-strong: #d4d4d8;
+    --text: #28282c;
+    --text-weak: #6c6c74;
+    --text-dim: #9a9aa2;
+    --accent: #5e6ad2;
+
+    --measure-bg: rgba(94,106,210,.06);
+    --measure-dash: rgba(94,106,210,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif; color: var(--text); overflow: hidden; background: var(--bg-page); font-size: 13px; }
+
+  .app-root {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* ─── Sidebar (localSidebar) — abstract regions ─── */
+  .sidebar-container {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: var(--sidebar);
+    background: var(--bg-sidebar);
+    z-index: 96;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 8px;
+  }
+  .sidebar-container .region {
+    width: 100%;
+    flex: 1 1 0;
+    border-style: solid;
+    border-color: var(--border);
+    background: rgba(0,0,0,.02);
+  }
+  body.sidebar-dragging .sidebar-container { transition: none; }
+
+  /* 공통 region — 가운데 정렬 라벨 */
+  .region {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-weak);
+    letter-spacing: 0;
+    border: 1px dashed var(--border-strong);
+    background: rgba(0,0,0,.015);
+    border-radius: 6px;
+    text-align: center;
+    line-height: 1.4;
+    padding: 10px;
+  }
+  .region [id$="-size"], .region .w-col, .region .w-row, .region #w-hcol {
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    color: var(--accent);
+  }
+  .region.flex { flex: 1 1 0; min-height: 60px; }
+
+  .sidebar__body-label {
+    flex: 1; overflow: hidden;
+    margin: 6px 8px;
+  }
+
+  /* Sidebar 리사이저 — 7px, col-resize */
+  .sidebar-resizer {
+    position: absolute;
+    left: calc(var(--sidebar) - 4px);
+    top: 14px; bottom: 40px;
+    width: 7px;
+    cursor: col-resize;
+    z-index: 97;
+  }
+  .sidebar-resizer::after {
+    content: "";
+    position: absolute;
+    left: 3px; top: 0; bottom: 0;
+    width: 1px;
+    background: transparent;
+    transition: background 120ms;
+  }
+  .sidebar-resizer:hover::after,
+  .sidebar-resizer.dragging::after { background: var(--accent); }
+
+  /* drag 중 size 배지 */
+  .resize-tooltip {
+    position: fixed;
+    padding: 4px 8px;
+    background: var(--text);
+    color: #fff;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 1000;
+    white-space: nowrap;
+    display: none;
+  }
+  body.sidebar-dragging .resize-tooltip.sidebar,
+  body.hcol-dragging .resize-tooltip.hcol,
+  body.col-dragging .resize-tooltip.col,
+  body.row-dragging .resize-tooltip.row {
+    display: block;
+  }
+
+  /* ─── Main — 플로팅 섬 ─── */
+  .main {
+    position: absolute;
+    left: var(--sidebar);
+    top: var(--main-gap);
+    right: var(--main-gap);
+    bottom: var(--main-gap);
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: var(--main-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* view-header — 단일 region */
+  .view-header {
+    flex-shrink: 0;
+    height: 88px;
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .view-header .region { height: 100%; }
+
+  /* ─── View body: team all-issues (2D grouped board) ─── */
+  .view-body {
+    flex: 1; min-height: 0;
+    display: none;
+    position: relative;
+    overflow: hidden;
+  }
+  .view-body.active { display: flex; }
+
+  .board-scroll {
+    flex: 1; min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    padding: 8px;
+    gap: 8px;
+  }
+  /* column headers row — 각 column header가 독립 region */
+  .board-cols-header {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .board-col-head {
+    width: var(--col-width);
+    flex-shrink: 0;
+    height: 44px;
+    position: relative;
+  }
+  .board-col-head .region { height: 100%; }
+
+  /* per-column resizer (right edge) */
+  .col-resizer {
+    position: absolute;
+    right: -8px; top: 0; bottom: 0;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 4;
+  }
+  .col-resizer::after {
+    content: "";
+    position: absolute; left: 3px; top: 4px; bottom: 4px;
+    width: 2px; background: transparent;
+    transition: background 120ms;
+    border-radius: 1px;
+  }
+  .col-resizer:hover::after,
+  .col-resizer.dragging::after { background: var(--accent); }
+
+  /* status rows — 각 row가 단일 region */
+  .board-rows { display: flex; flex-direction: column; gap: 8px; }
+  .board-row {
+    position: relative;
+    height: var(--row-cell-h);
+    flex-shrink: 0;
+  }
+  .board-row .region { height: 100%; }
+
+  /* row height resizer (bottom edge of the row) */
+  .row-resizer {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: -8px;
+    height: 8px;
+    cursor: row-resize;
+    z-index: 2;
+  }
+  .row-resizer::after {
+    content: "";
+    position: absolute; top: 3px; left: 12px; right: 12px;
+    height: 2px; background: transparent;
+    transition: background 120ms;
+    border-radius: 1px;
+  }
+  .row-resizer:hover::after,
+  .row-resizer.dragging::after { background: var(--accent); }
+
+  /* Hidden columns panel — default: inline flex 항목 (board-scroll 옆 공간 차지) */
+  .hidden-cols {
+    position: relative;
+    width: var(--hidden-cols);
+    min-width: var(--hidden-cols);
+    max-width: var(--hidden-cols);
+    flex-shrink: 0;
+    padding: 8px;
+    background: rgba(0,0,0,.015);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+    transition: width 200ms ease, min-width 200ms ease, max-width 200ms ease, padding 200ms ease, opacity 200ms ease, transform 200ms ease;
+  }
+  /* narrow viewport (<1024): floating overlay 로 전환 */
+  body.narrow-vw .hidden-cols {
+    position: absolute;
+    right: 8px; top: 8px; bottom: 8px;
+    width: var(--hidden-cols);
+    min-width: 0;
+    max-width: none;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow:
+      0 4px 12px rgba(0,0,0,.04),
+      0 1px 3px rgba(0,0,0,.06);
+    z-index: 10;
+  }
+  .hidden-cols .region { flex: 1 1 0; height: auto; }
+  .hidden-cols__title {
+    flex-shrink: 0;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-weak);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 4px 6px;
+  }
+  .hidden-cols__title .accent { color: var(--accent); }
+  .hidden-cols__resizer {
+    position: absolute;
+    left: -4px; top: 14px; bottom: 14px;
+    width: 8px;
+    cursor: col-resize;
+    z-index: 2;
+  }
+  .hidden-cols__resizer::after {
+    content: "";
+    position: absolute; left: 3px; top: 0; bottom: 0;
+    width: 2px; background: transparent;
+    transition: background 120ms;
+    border-radius: 1px;
+  }
+  .hidden-cols__resizer:hover::after,
+  .hidden-cols__resizer.dragging::after { background: var(--accent); }
+
+  /* Hidden columns — collapsed: 패널 완전히 사라짐
+     · inline(wide) 모드: width/padding 0 으로 축소 → 컨텐츠가 자연스럽게 넓어짐
+     · floating(narrow) 모드: 우측으로 슬라이드아웃 */
+  body.hcol-collapsed .hidden-cols {
+    width: 0;
+    min-width: 0;
+    max-width: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  body.narrow-vw.hcol-collapsed .hidden-cols {
+    width: var(--hidden-cols);
+    padding: 8px;
+    border: 1px solid var(--border);
+    transform: translateX(calc(100% + 16px));
+    opacity: 0;
+  }
+
+  /* Hidden columns 외부 토글 버튼 — view-header 우측 (실제 Linear는 두 번째 row 끝) */
+  .view-header { position: relative; }
+  .hcol-toggle {
+    position: absolute;
+    right: 12px; bottom: 12px;
+    width: 28px; height: 28px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--text-weak);
+    display: grid; place-items: center;
+    font-size: 13px;
+    font-family: inherit;
+    z-index: 20;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  }
+  .hcol-toggle:hover { background: rgba(0,0,0,.03); color: var(--text); }
+  .hcol-toggle.active { background: rgba(94,106,210,.08); color: var(--accent); border-color: rgba(94,106,210,.3); }
+
+  /* (Ask Linear UI 제거됨) */
+
+  /* ─── info bar ─── */
+  .info {
+    position: fixed; left: calc(var(--sidebar) + 16px); bottom: 14px;
+    z-index: 500;
+    font-size: 10px; color: var(--text-weak);
+    background: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+    max-width: calc(100vw - var(--sidebar) - 180px);
+  }
+
+  /* ─── 뷰포트 축소 대응 ─── */
+  /* collapsed: sidebar 완전 숨김, main이 viewport 전체로 */
+  body.sidebar-collapsed .sidebar-container {
+    width: 0;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+  }
+  body.sidebar-collapsed .sidebar-resizer { display: none; }
+  body.sidebar-collapsed .main { left: 0; }
+  body.sidebar-collapsed .info { left: 56px; max-width: calc(100vw - 220px); }
+
+  /* 접힘 상태 햄버거 — hover 시 사이드바 floating overlay로 preview */
+  .hamburger {
+    position: fixed;
+    top: 12px; left: 14px;
+    width: 28px; height: 28px;
+    border-radius: 5px;
+    border: 1px solid var(--border-strong);
+    background: #fff;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 120;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .hamburger:hover { background: rgba(0,0,0,.03); }
+  body.sidebar-collapsed .hamburger { display: flex; }
+  /* hover-preview 시 사이드바가 overlay처럼 floating */
+  body.sidebar-collapsed.hover-preview .sidebar-container {
+    width: var(--sidebar-preview, 330px);
+    border-right: 1px solid var(--border);
+    box-shadow: 4px 0 20px rgba(0,0,0,.08);
+    z-index: 130;
+  }
+
+  body.sidebar-dragging { cursor: col-resize; user-select: none; }
+  body.sidebar-dragging * { cursor: col-resize !important; user-select: none !important; }
+  body.col-dragging,
+  body.hcol-dragging { cursor: col-resize; user-select: none; }
+  body.col-dragging *,
+  body.hcol-dragging * { cursor: col-resize !important; user-select: none !important; }
+  body.row-dragging { cursor: row-resize; user-select: none; }
+  body.row-dragging * { cursor: row-resize !important; user-select: none !important; }
+</style>
+</head>
+<body>
+
+<div class="app-root">
+  <!-- Hamburger (appears only when sidebar collapsed by narrow viewport) -->
+  <button class="hamburger" id="btn-hamburger" aria-label="Open sidebar">☰</button>
+
+  <!-- Sidebar (localSidebar) — 단일 region, 라벨에 실시간 폭 표기 -->
+  <aside class="sidebar-container" id="sidebar">
+    <div class="region" id="sb-region">globalSidebar · <span id="sb-size">330</span></div>
+  </aside>
+
+  <!-- Sidebar resizer -->
+  <div class="sidebar-resizer" id="sidebar-resizer"></div>
+
+  <!-- Main — floating island -->
+  <section class="main" id="main">
+    <header class="view-header">
+      <div class="region">VIEW-HEADER · h=88</div>
+      <!-- HIDDEN-COLS 외부 토글 버튼 — view-header 우측 상단 -->
+      <button class="hcol-toggle active" id="btn-hcol-toggle" title="Toggle hidden-cols panel" aria-label="Toggle panel">⊟</button>
+    </header>
+
+    <!-- All issues — 2D grouped board (columns × rows) -->
+    <div class="view-body active">
+      <div class="board-scroll" id="board-scroll">
+        <div class="board-cols-header" id="board-cols-header">
+          <!-- columns generated via JS -->
+        </div>
+        <div class="board-rows" id="board-rows">
+          <!-- rows generated via JS -->
+        </div>
+      </div>
+
+      <aside class="hidden-cols" id="hidden-cols">
+        <div class="hidden-cols__resizer" id="hcol-resizer"></div>
+        <div class="hidden-cols__title">HIDDEN-COLS · <span class="accent" id="w-hcol">330</span></div>
+        <div class="region">panel body</div>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<!-- Resize tooltips -->
+<div class="resize-tooltip sidebar" id="tt-sidebar">sidebar: 330px</div>
+<div class="resize-tooltip col" id="tt-col">col: 320px</div>
+<div class="resize-tooltip row" id="tt-row">row: 140px</div>
+<div class="resize-tooltip hcol" id="tt-hcol">hidden-cols: 330px</div>
+
+<div class="info" id="info">vw: —</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const body = document.body;
+
+  const state = {
+    sidebar: 330,                  // 사용자가 드래그로 설정한 값 (persistent)
+    effectiveSidebar: 330,         // 뷰포트에 맞춰 실제 렌더되는 값
+    sidebarCollapsed: false,       // 뷰포트 너무 좁을 때 overlay 모드로 숨김
+    colWidth: 320,
+    rowHeight: 140,
+    hcol: 330,
+    hcolCollapsed: false,          // hidden-cols 패널 접힘 상태
+    cols: 4,
+    rows: 4,
+  };
+  const SB_MIN = 240, SB_MAX = 600;
+  const COL_MIN = 240, COL_MAX = 520;
+  const ROW_MIN = 80,  ROW_MAX = 360;
+  const HC_MIN = 240,  HC_MAX = 480;
+  // 실제 Linear 관찰 임계치
+  const WIDE_AT    = 1200;   // 이상: 사용자 지정 사이드바 폭 그대로
+  const NARROW_AT  = 1024;   // 미만: 사이드바 완전 접힘 (hamburger로만 접근)
+  // 1024 ~ 1200 사이: state.sidebar → SB_MIN 으로 선형 축소
+
+  const computeEffectiveSidebar = () => {
+    if (innerWidth < NARROW_AT) {
+      state.sidebarCollapsed = true;
+      state.effectiveSidebar = 0;
+    } else if (innerWidth >= WIDE_AT) {
+      state.sidebarCollapsed = false;
+      state.effectiveSidebar = state.sidebar;
+    } else {
+      state.sidebarCollapsed = false;
+      // 선형 보간: NARROW_AT에서 SB_MIN, WIDE_AT에서 state.sidebar
+      const t = (innerWidth - NARROW_AT) / (WIDE_AT - NARROW_AT);  // 0..1
+      state.effectiveSidebar = Math.round(SB_MIN + (state.sidebar - SB_MIN) * t);
+    }
+  };
+
+  // ─── build board skeleton (단일 region + 리사이저만) ───
+  const buildBoard = () => {
+    const colsHead = document.getElementById('board-cols-header');
+    const rowsWrap = document.getElementById('board-rows');
+    colsHead.innerHTML = '';
+    rowsWrap.innerHTML = '';
+    for (let r = 0; r < state.rows; r++) {
+      const row = document.createElement('div');
+      row.className = 'board-row';
+      row.innerHTML = `<div class="region">ROW ${r+1} · h=<span class="w-row">${state.rowHeight}</span></div><div class="row-resizer" data-row-resizer></div>`;
+      rowsWrap.appendChild(row);
+    }
+    wireRowResizers();
+  };
+
+  const applyVars = () => {
+    computeEffectiveSidebar();
+    root.style.setProperty('--sidebar', state.effectiveSidebar + 'px');
+    root.style.setProperty('--col-width', state.colWidth + 'px');
+    root.style.setProperty('--row-cell-h', state.rowHeight + 'px');
+    root.style.setProperty('--hidden-cols', state.hcol + 'px');
+    body.classList.toggle('sidebar-collapsed', state.sidebarCollapsed);
+    body.classList.toggle('sidebar-auto-shrunk', !state.sidebarCollapsed && state.effectiveSidebar < state.sidebar);
+    // narrow viewport (<1024): HIDDEN-COLS 를 floating overlay 로 전환
+    body.classList.toggle('narrow-vw', innerWidth < NARROW_AT);
+    // 각 region 라벨에 실시간 치수 반영
+    const sbLabel = document.getElementById('sb-size');
+    if (sbLabel) sbLabel.textContent = state.sidebarCollapsed
+      ? '0 (collapsed)'
+      : (state.effectiveSidebar < state.sidebar
+          ? Math.round(state.effectiveSidebar) + ' / ' + Math.round(state.sidebar)
+          : Math.round(state.sidebar));
+    document.querySelectorAll('.w-col').forEach(el => el.textContent = Math.round(state.colWidth));
+    document.querySelectorAll('.w-row').forEach(el => el.textContent = Math.round(state.rowHeight));
+    document.getElementById('w-hcol').textContent = Math.round(state.hcol);
+
+    // hidden-cols collapse
+    body.classList.toggle('hcol-collapsed', state.hcolCollapsed);
+    const hcolBtn = document.getElementById('btn-hcol-toggle');
+    if (hcolBtn) {
+      hcolBtn.classList.toggle('active', !state.hcolCollapsed);
+      hcolBtn.title = state.hcolCollapsed ? 'Open hidden-cols panel' : 'Close hidden-cols panel';
+    }
+
+    const mainW = Math.round(innerWidth - state.effectiveSidebar - 16);
+    const sbState = state.sidebarCollapsed
+      ? `collapsed (vw<${NARROW_AT})`
+      : state.effectiveSidebar < state.sidebar
+        ? `shrunk ${Math.round(state.effectiveSidebar)}/${Math.round(state.sidebar)} (vw<${WIDE_AT})`
+        : `${Math.round(state.effectiveSidebar)}px`;
+    const hcolMode = innerWidth < NARROW_AT ? 'floating' : 'inline';
+    const hcolState = state.hcolCollapsed ? 'closed' : `${Math.round(state.hcol)}px (${hcolMode})`;
+    document.getElementById('info').textContent =
+      `vw: ${innerWidth} · dpr: ${devicePixelRatio}` +
+      ` · sidebar: ${sbState} (${SB_MIN}~${SB_MAX})` +
+      ` · main: ${mainW}px (gap 8×2)` +
+      ` · hidden-cols: ${hcolState}` +
+      ` · col: ${Math.round(state.colWidth)}px · row: ${Math.round(state.rowHeight)}px`;
+  };
+
+  // ─── resize tooltips ───
+  const showTT = (kind, text, x, y) => {
+    const tt = document.getElementById('tt-' + kind);
+    tt.textContent = text;
+    tt.style.left = (x + 14) + 'px';
+    tt.style.top = (y + 14) + 'px';
+  };
+
+  // ─── Sidebar drag ───
+  const sbRes = document.getElementById('sidebar-resizer');
+  sbRes.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    sbRes.setPointerCapture(e.pointerId);
+    sbRes.classList.add('dragging');
+    body.classList.add('sidebar-dragging');
+    const startX = e.clientX, startW = state.effectiveSidebar;
+    const onMove = (ev) => {
+      let w = startW + (ev.clientX - startX);
+      w = Math.max(SB_MIN, Math.min(SB_MAX, w));
+      state.sidebar = w;     // 사용자 의도값 저장
+      applyVars();           // effective는 뷰포트에 맞춰 자동 재계산
+      const shown = state.effectiveSidebar < state.sidebar
+        ? `sidebar: ${Math.round(state.effectiveSidebar)}px (wanted ${Math.round(w)}px, capped by vw)`
+        : `sidebar: ${Math.round(w)}px  (min ${SB_MIN} / max ${SB_MAX})`;
+      showTT('sidebar', shown, ev.clientX, ev.clientY);
+    };
+    const onUp = () => {
+      sbRes.classList.remove('dragging');
+      body.classList.remove('sidebar-dragging');
+      sbRes.removeEventListener('pointermove', onMove);
+      sbRes.removeEventListener('pointerup', onUp);
+    };
+    sbRes.addEventListener('pointermove', onMove);
+    sbRes.addEventListener('pointerup', onUp);
+  });
+
+  // ─── 뷰포트 축소 시 접힘 상태의 햄버거 hover → overlay preview ───
+  const hamb = document.getElementById('btn-hamburger');
+  const sbEl = document.getElementById('sidebar');
+  const showHoverPreview = () => {
+    root.style.setProperty('--sidebar-preview', Math.max(SB_MIN, Math.min(state.sidebar, innerWidth - 40)) + 'px');
+    body.classList.add('hover-preview');
+  };
+  const hideHoverPreview = () => {
+    body.classList.remove('hover-preview');
+  };
+  hamb.addEventListener('pointerenter', () => {
+    if (state.sidebarCollapsed) showHoverPreview();
+  });
+  hamb.addEventListener('pointerleave', (e) => {
+    const to = e.relatedTarget;
+    if (to && sbEl.contains(to)) return;
+    hideHoverPreview();
+  });
+  sbEl.addEventListener('pointerleave', (e) => {
+    const to = e.relatedTarget;
+    if (to && hamb.contains(to)) return;
+    hideHoverPreview();
+  });
+
+  // ─── Column drag (assignee column width) ───
+  const wireColResizers = () => {
+    document.querySelectorAll('[data-col-resizer]').forEach(res => {
+      res.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        res.setPointerCapture(e.pointerId);
+        res.classList.add('dragging');
+        body.classList.add('col-dragging');
+        const startX = e.clientX, startW = state.colWidth;
+        const onMove = (ev) => {
+          let w = startW + (ev.clientX - startX);
+          w = Math.max(COL_MIN, Math.min(COL_MAX, w));
+          state.colWidth = w;
+          applyVars();
+          showTT('col', `col: ${Math.round(w)}px  (min ${COL_MIN} / max ${COL_MAX})`, ev.clientX, ev.clientY);
+        };
+        const onUp = () => {
+          res.classList.remove('dragging');
+          body.classList.remove('col-dragging');
+          res.removeEventListener('pointermove', onMove);
+          res.removeEventListener('pointerup', onUp);
+        };
+        res.addEventListener('pointermove', onMove);
+        res.addEventListener('pointerup', onUp);
+      });
+    });
+  };
+
+  // ─── Row drag (status row height) ───
+  const wireRowResizers = () => {
+    document.querySelectorAll('[data-row-resizer]').forEach(res => {
+      res.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        res.setPointerCapture(e.pointerId);
+        res.classList.add('dragging');
+        body.classList.add('row-dragging');
+        const startY = e.clientY, startH = state.rowHeight;
+        const onMove = (ev) => {
+          let h = startH + (ev.clientY - startY);
+          h = Math.max(ROW_MIN, Math.min(ROW_MAX, h));
+          state.rowHeight = h;
+          applyVars();
+          showTT('row', `row cell: ${Math.round(h)}px  (min ${ROW_MIN} / max ${ROW_MAX})`, ev.clientX, ev.clientY);
+        };
+        const onUp = () => {
+          res.classList.remove('dragging');
+          body.classList.remove('row-dragging');
+          res.removeEventListener('pointermove', onMove);
+          res.removeEventListener('pointerup', onUp);
+        };
+        res.addEventListener('pointermove', onMove);
+        res.addEventListener('pointerup', onUp);
+      });
+    });
+  };
+
+  // ─── Hidden-cols panel drag (left edge, drag left = expand) ───
+  const hcRes = document.getElementById('hcol-resizer');
+  hcRes.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    hcRes.setPointerCapture(e.pointerId);
+    hcRes.classList.add('dragging');
+    body.classList.add('hcol-dragging');
+    const startX = e.clientX, startW = state.hcol;
+    const onMove = (ev) => {
+      let w = startW - (ev.clientX - startX);   // drag left → expand
+      w = Math.max(HC_MIN, Math.min(HC_MAX, w));
+      state.hcol = w;
+      applyVars();
+      showTT('hcol', `hidden-cols: ${Math.round(w)}px  (min ${HC_MIN} / max ${HC_MAX})`, ev.clientX, ev.clientY);
+    };
+    const onUp = () => {
+      hcRes.classList.remove('dragging');
+      body.classList.remove('hcol-dragging');
+      hcRes.removeEventListener('pointermove', onMove);
+      hcRes.removeEventListener('pointerup', onUp);
+    };
+    hcRes.addEventListener('pointermove', onMove);
+    hcRes.addEventListener('pointerup', onUp);
+  });
+
+  // ─── Hidden-cols 접기/펴기 토글 ───
+  document.getElementById('btn-hcol-toggle').addEventListener('click', () => {
+    state.hcolCollapsed = !state.hcolCollapsed;
+    applyVars();
+  });
+
+  window.addEventListener('resize', applyVars);
+
+  buildBoard();
+  applyVars();
+})();
+</script>
+</body>
+</html>

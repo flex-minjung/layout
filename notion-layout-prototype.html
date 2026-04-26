@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>Notion Layout Prototype</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root {
+    --sidebar: 270px;
+    --topbar: 44px;
+    --library: 320px;
+    --peek: 651.5px;
+    --content-max: 720px;
+    --content-margin: 0px;
+
+    --sidebar-min: 270px;
+    --sidebar-max: 600px;
+    --library-min: 320px;
+    --library-max: 600px;
+    --peek-min: 564px;
+    --peek-max: 1710px;
+  }
+
+  /* 기본 모드: 본문 max 720 + 양쪽 margin. 독서 가독성 우선 (Notion 기본 철학)
+     peek 가 열린 모드: 본문 max 제약 해제 (1fr) — frame 이 좁아진 만큼 content 도 따라 줄어듦 */
+  body.layout-desktop    { --content-max: 720px; --content-margin: 24px; }
+  body.layout-tablet     { --content-max: 720px; --content-margin: 48px; }
+  body.layout-phone      { --content-max: 720px; --content-margin: 24px; }
+  body.layout-side-peek  { --content-max: none;  --content-margin: 76px; }
+  body.layout-center-peek { --content-max: none; --content-margin: 126px; }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif; color: #37352f; overflow: hidden; background: #fff; }
+
+  .cursor-listener {
+    position: relative;
+    width: 100vw;
+    height: 100%;
+    display: flex;
+    background: #fff;
+  }
+
+  /* ─── Sidebar (flex, resizable) ─── */
+  .sidebar {
+    order: 1;
+    /* flex shorthand에 CSS var를 넣으면 파싱 애매 — 분리해서 명시 */
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: var(--sidebar-effective);
+    width: var(--sidebar-effective);
+    height: 100%;
+    background: #f7f6f3;
+    border-right: 1px solid #ebeae5;
+    /* sidebar가 library(z=100)보다 위에 와야 "밑에서 나오는" 착시 유지 */
+    position: relative;
+    z-index: 111;
+    display: flex;
+    flex-direction: column;
+    transition: width 200ms ease;
+    overflow: hidden;
+  }
+  /* 드래그 중엔 transition 끄기 — pointer-follow 가 자연스럽도록 */
+  body.sidebar-dragging .sidebar { transition: none; }
+  body.sidebar-dragging .sidebar-resizer { transition: none; }
+  .sidebar__header {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #9b9a97;
+    border-bottom: 1px solid #ebeae5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    overflow: hidden;
+  }
+  .sidebar__header > span {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .sb-collapse {
+    background: transparent;
+    border: 0;
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #9b9a97;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sb-collapse:hover { background: rgba(55,53,47,.08); color: #37352f; }
+  .sidebar__body { padding: 8px 8px; font-size: 13px; color: #37352f; overflow: auto; flex: 1; }
+  .sb-item {
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #37352f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sb-item:hover { background: rgba(55,53,47,.08); }
+  .sb-section {
+    padding: 14px 10px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9b9a97;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .sb-more {
+    display: block;
+    width: calc(100% - 20px);
+    margin: 12px 10px 4px;
+    padding: 6px 8px;
+    border: 0;
+    background: rgba(55,53,47,.06);
+    color: #37352f;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .sb-more:hover { background: rgba(55,53,47,.12); }
+  .sb-more.active { background: #37352f; color: #fff; }
+
+  /* Sidebar resizer — absolute overlay, 사이드바 우측 엣지에 걸침 */
+  .sidebar-resizer {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: calc(var(--sidebar-effective) - 6px);
+    width: 12px;
+    cursor: col-resize;
+    z-index: 112;
+  }
+  /* 뷰포트 축소로 사이드바가 user 값보다 작아지면 리사이저에 상단 배지 */
+  body.sidebar-vw-shrunk .sidebar-resizer::before {
+    content: "auto-shrunk";
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(35,131,226,.15);
+    color: #2383e2;
+  }
+  .sidebar-resizer::after {
+    content: "";
+    position: absolute; inset: 0 auto 0 5px;
+    width: 2px; background: transparent;
+    transition: background 120ms;
+  }
+  .sidebar-resizer:hover::after,
+  .sidebar-resizer.dragging::after { background: #2383e2; }
+  body.layout-phone .sidebar-resizer { display: none; }
+
+  /* ─── Frame (main content) ─── */
+  .frame {
+    order: 2;
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+    position: relative;
+  }
+  .topbar {
+    height: var(--topbar);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    border-bottom: 1px solid #ebeae5;
+    font-size: 12px;
+    color: #9b9a97;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  /* 사이드바가 접혀 햄버거가 뜨는 상태면 topbar 텍스트를 햄버거 너머로 밀기 */
+  body.user-collapsed:not(.sidebar-restored) .topbar,
+  body.layout-phone:not(.sidebar-restored) .topbar,
+  body.sidebar-auto-collapsed:not(.sidebar-restored) .topbar {
+    padding-left: 48px;
+  }
+  .page-content {
+    flex: 1 1 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px var(--content-margin);
+    min-height: 0;
+  }
+  .page-content > * {
+    width: 100%;
+    max-width: var(--content-max);
+    /* 긴 텍스트/테이블이 flex 아이템 min-content 이상 밀어내는 것 방지 */
+    min-width: 0;
+  }
+  /* max-width 720 컨텐츠 영역 — 사이즈 변화 시각화를 위한 배경색 */
+  .content-body {
+    background: rgba(35,131,226,.08);
+    border: 1px dashed rgba(35,131,226,.35);
+    padding: 24px 32px;
+    min-height: 300px;
+    border-radius: 4px;
+  }
+  .page-links { display: flex; flex-direction: column; gap: 4px; margin-top: 24px; }
+  .page-link {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #37352f;
+    font-size: 14px;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font-family: inherit;
+  }
+  .page-link:hover { background: rgba(55,53,47,.08); }
+
+  /* 접힘 상태 (user-collapsed OR layout-phone OR sidebar-auto-collapsed):
+     기본: sidebar width 0
+     hover-preview: floating drawer로 overlay
+     drawer-open (클릭 복귀): inline flex 그대로 (원래 상태) */
+  body.user-collapsed .sidebar,
+  body.layout-phone .sidebar,
+  body.sidebar-auto-collapsed .sidebar {
+    width: 0;
+    min-width: 0;
+    flex-basis: 0;   /* flex: 0 0 auto 의 auto 가 width 변화를 즉시 반영 안 하는 이슈 대응 */
+    overflow: hidden;
+    border-right: 0;
+  }
+
+  /* 햄버거 hover 시 → floating drawer (메인 위에 overlay) */
+  body.user-collapsed .sidebar.hover-preview,
+  body.layout-phone .sidebar.hover-preview,
+  body.sidebar-auto-collapsed .sidebar.hover-preview {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: var(--sidebar);
+    min-width: var(--sidebar);
+    z-index: 300;
+    box-shadow: 0 2px 20px rgba(0,0,0,.15);
+    overflow: hidden;
+    border-right: 1px solid #ebeae5;
+  }
+  /* hover-preview 상태는 햄버거가 보이는 상태이므로 헤더 텍스트를 햄버거 너머로 밀기 */
+  body.user-collapsed .sidebar.hover-preview .sidebar__header,
+  body.layout-phone .sidebar.hover-preview .sidebar__header,
+  body.sidebar-auto-collapsed .sidebar.hover-preview .sidebar__header {
+    padding-left: 48px;
+  }
+
+  /* 클릭 복귀 시 → inline flex로 원상 복구. JS가 user-collapsed 를 제거하므로
+     단일 클래스 기반으로 매칭 (default .sidebar 규칙이 이미 적용되지만, transition
+     기동을 위해 명시) */
+  body.sidebar-restored .sidebar {
+    width: var(--sidebar);
+    min-width: 0;
+    flex-basis: var(--sidebar);   /* 접힘 시 0 으로 바뀐 값을 다시 변수로 바인딩 */
+    position: relative;
+    overflow: hidden;
+    border-right: 1px solid #ebeae5;
+  }
+
+  body.layout-phone .sidebar-resizer,
+  body.sidebar-auto-collapsed .sidebar-resizer,
+  body.user-collapsed .sidebar-resizer { display: none; }
+  body.sidebar-restored .sidebar-resizer { display: block; }
+
+  /* library: 사이드바 접힘 상태에선 library 좌측 기준점을 0으로 */
+  body.layout-phone .library,
+  body.sidebar-auto-collapsed .library,
+  body.user-collapsed .library { inset-inline-start: 0; }
+  body.sidebar-restored .library { inset-inline-start: var(--sidebar); }
+
+  /* 햄버거 버튼 — 사이드바 접힘 상태에서만 노출 */
+  .hamburger {
+    position: fixed;
+    top: 8px; left: 10px;
+    width: 28px; height: 28px;
+    background: transparent;
+    border: 0;
+    border-radius: 4px;
+    cursor: pointer;
+    display: none;
+    z-index: 301;
+    align-items: center;
+    justify-content: center;
+    color: #37352f;
+  }
+  body.layout-phone .hamburger,
+  body.sidebar-auto-collapsed .hamburger,
+  body.user-collapsed .hamburger { display: flex; }
+  /* 사이드바가 inline 복원된 상태면 햄버거 숨김 */
+  body.sidebar-restored .hamburger { display: none; }
+  .hamburger:hover { background: rgba(55,53,47,.08); }
+  .hamburger__icon {
+    display: block;
+    width: 16px; height: 2px;
+    background: currentColor;
+    position: relative;
+  }
+  .hamburger__icon::before,
+  .hamburger__icon::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 16px; height: 2px;
+    background: currentColor;
+  }
+  .hamburger__icon::before { top: -5px; }
+  .hamburger__icon::after { top: 5px; }
+  .page-content h1 {
+    font-size: 36px;
+    margin: 0 0 8px;
+    font-weight: 700;
+  }
+  .page-content p {
+    font-size: 13px;
+    color: #9b9a97;
+    margin: 0;
+  }
+
+  /* ─── Library panel (fixed overlay, left) ─── */
+  .library {
+    position: fixed;
+    top: 0;
+    inset-inline-start: var(--sidebar);
+    bottom: 0;
+    width: var(--library);
+    background: #fff;
+    box-shadow: 4px 0 20px rgba(0,0,0,.12);
+    /* 왼쪽 shadow는 사이드바와 겹치므로 clip-path로 차단, 오른쪽만 허용 */
+    clip-path: inset(0 -24px 0 0);
+    /* 사이드바(z=111) 밑에서 슬라이드 나오는 시각효과를 위해 낮게 유지 */
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    opacity: 0;
+    visibility: hidden;
+    transition: transform 200ms ease, opacity 200ms ease, visibility 200ms;
+  }
+  .library.open {
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+  }
+  .library__header {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #9b9a97;
+    border-bottom: 1px solid #ebeae5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .library__header .w { font-weight: 400; font-size: 10px; color: #c5c4c0; }
+  /* library 우측 엣지 리사이저 */
+  .library-resizer {
+    position: absolute;
+    right: -6px; top: 0; bottom: 0;
+    width: 12px;
+    cursor: col-resize;
+    z-index: 2;
+  }
+  .library-resizer::after {
+    content: "";
+    position: absolute; inset: 0 auto 0 5px;
+    width: 2px; background: transparent;
+    transition: background 120ms;
+  }
+  .library-resizer:hover::after,
+  .library-resizer.dragging::after { background: #2383e2; }
+  .panel-close {
+    background: none; border: 0; padding: 2px 6px;
+    font-size: 14px; cursor: pointer; color: #9b9a97;
+    border-radius: 4px; margin-left: 4px;
+  }
+  .panel-close:hover { background: rgba(55,53,47,.08); color: #37352f; }
+  .library__body { padding: 12px 16px; font-size: 12px; color: #9b9a97; overflow: auto; flex: 1; }
+
+  /* ─── Peek renderer (absolute overlay, right) ─── */
+  .peek {
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+    bottom: 0;
+    width: var(--peek);
+    background: #fff;
+    box-shadow: -2px 0 20px rgba(0,0,0,.1);
+    z-index: 109;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 200ms ease, width 200ms ease;
+  }
+  .peek.open { transform: translateX(0); }
+  /* 뷰포트 리사이즈 중/직후엔 peek 전환 애니메이션 생략 (takeover 포함 즉시 전환) */
+  body.resizing .peek,
+  body.resizing .sidebar { transition: none; }
+
+  .peek-resizer {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 12px;
+    cursor: col-resize;
+    z-index: 1;
+  }
+  .peek-resizer::after {
+    content: "";
+    position: absolute; inset: 0 auto 0 5px;
+    width: 2px; background: transparent;
+  }
+  .peek-resizer:hover::after { background: #2383e2; }
+
+  .peek__header {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #9b9a97;
+    border-bottom: 1px solid #ebeae5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-left: 28px;
+  }
+  .peek__header .w { font-weight: 400; font-size: 10px; color: #c5c4c0; }
+  .peek__header .nav {
+    display: flex; gap: 4px; align-items: center;
+  }
+  .peek__header .nav button {
+    background: transparent; border: 0; padding: 2px 6px;
+    font-size: 13px; cursor: pointer; color: #9b9a97;
+    border-radius: 4px;
+  }
+  .peek__header .nav button:hover:not(:disabled) { background: rgba(55,53,47,.08); color: #37352f; }
+  .peek__header .nav button:disabled { opacity: .35; cursor: default; }
+  .peek__body { padding: 12px 16px; font-size: 12px; color: #9b9a97; overflow: auto; flex: 1; }
+  .peek__stack-label { font-size: 10px; color: #c5c4c0; margin-top: 6px; }
+
+  /* ─── Peek takeover: 뷰포트가 너무 좁아 peek가 main을 전부 덮어야 할 때 ─── */
+  body.peek-takeover .peek {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 350;
+    transform: none;
+  }
+  body.peek-takeover .peek-resizer { display: none; }
+  body.peek-takeover .sidebar { width: 0; min-width: 0; flex-basis: 0; border-right: 0; overflow: hidden; }
+  /* takeover 시 sidebar 가 hover-preview 면 floating drawer.
+     top offset 으로 좌상단 back 버튼(8px + 32px)을 덮지 않도록 함 */
+  body.peek-takeover .sidebar.hover-preview {
+    position: fixed;
+    left: 0; top: 48px; bottom: 0;
+    width: var(--sidebar); min-width: var(--sidebar);
+    z-index: 360;
+    box-shadow: 0 2px 20px rgba(0,0,0,.15);
+    border-right: 1px solid #ebeae5;
+  }
+  /* takeover 전용 back 버튼 (peek 좌상단) */
+  .peek-takeover-back {
+    display: none;
+    position: absolute;
+    top: 8px; left: 12px;
+    z-index: 1;
+    width: 32px; height: 32px;
+    border: 0; background: rgba(55,53,47,.06);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px; color: #37352f;
+    align-items: center; justify-content: center;
+  }
+  .peek-takeover-back:hover { background: rgba(55,53,47,.12); }
+  body.peek-takeover .peek-takeover-back { display: flex; }
+  body.peek-takeover .peek__header { padding-left: 56px; }
+  /* takeover 상태에선 일반 햄버거 숨김 (back 화살표가 대체) */
+  body.peek-takeover .hamburger { display: none; }
+
+  /* ─── Center peek (모달) ─── */
+  body.peek-center .peek {
+    position: fixed;
+    inset-inline-end: auto;
+    inset-inline-start: 50%;
+    top: 50%;
+    bottom: auto;
+    width: min(960px, calc(100vw - 48px));
+    height: calc(100vh - 96px);
+    transform: translate(-50%, -50%);
+    z-index: 400;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,.18);
+  }
+  body.peek-center .peek:not(.open) { transform: translate(-50%, -50%) scale(.96); opacity: 0; }
+  body.peek-center .peek-resizer { display: none; }
+  .peek-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15,15,15,.4);
+    z-index: 399;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 200ms ease, visibility 200ms;
+  }
+  body.peek-center.peek-open .peek-backdrop { opacity: 1; visibility: visible; }
+  body.peek-center .peek__body { display: flex; }
+  body.peek-center .peek__body > .peek-main { flex: 1; min-width: 0; max-width: 960px; margin: 0 auto; }
+
+  /* center-peek-with-layout-panel: 우측 sub-panel */
+  body.peek-center-panel .peek__body > .peek-sub {
+    flex: 0 0 280px;
+    border-left: 1px solid #ebeae5;
+    padding-left: 16px;
+    margin-left: 16px;
+    font-size: 11px;
+  }
+  body:not(.peek-center-panel) .peek__body > .peek-sub { display: none; }
+
+  /* ─── Toggles & info ─── */
+  .toggle {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 500;
+    display: flex;
+    gap: 6px;
+  }
+  .toggle button {
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #ebeae5;
+    background: #fff;
+    color: #37352f;
+    cursor: pointer;
+  }
+  .toggle button.active { background: #37352f; color: #fff; border-color: #37352f; }
+  .toggle button:hover { background: #f4f4f2; }
+  .toggle button.active:hover { background: #2f2d2a; }
+
+  .info {
+    position: fixed; left: 12px; bottom: 12px; z-index: 500;
+    font-size: 10px; color: #9b9a97;
+    background: #f7f6f3; padding: 8px 10px; border-radius: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    border: 1px solid #ebeae5;
+  }
+</style>
+</head>
+<body>
+
+<button class="hamburger" id="btn-hamburger" aria-label="Open sidebar">
+  <span class="hamburger__icon"></span>
+</button>
+
+<div class="cursor-listener">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__header">
+      <span>globalSidebar · <span id="w-sidebar">270</span></span>
+      <button class="sb-collapse" id="btn-sb-collapse" aria-label="Collapse sidebar">«</button>
+    </div>
+    <div class="sidebar__body">
+      <div class="sb-item">🏠 홈</div>
+      <div class="sb-item">📥 받은편지함</div>
+      <div class="sb-item">🔍 검색</div>
+
+      <div class="sb-section">즐겨찾기</div>
+      <div class="sb-item">· 페이지 A</div>
+      <div class="sb-item">· 페이지 B</div>
+
+      <div class="sb-section">개인 페이지</div>
+      <div class="sb-item">· 문서 1</div>
+      <div class="sb-item">· 문서 2</div>
+
+      <button class="sb-more" id="btn-library">··· 더 보기</button>
+
+      <div class="sb-section">팀스페이스</div>
+      <div class="sb-item">· General</div>
+      <div class="sb-item">· flex Team</div>
+    </div>
+  </aside>
+  <div class="sidebar-resizer" role="separator" tabindex="0"
+       aria-label="왼쪽 및 오른쪽 방향키로 크기 조정"
+       aria-orientation="vertical"></div>
+
+  <!-- Peek center mode backdrop -->
+  <div class="peek-backdrop" id="peek-backdrop"></div>
+
+  <!-- Main frame -->
+  <section class="frame">
+    <div class="topbar"><span>topbar · h=44 (frame 너비만 덮음)</span></div>
+    <div class="page-content">
+      <div class="content-body">
+        <h1>frame / page content</h1>
+        <p>본문 max-width 720 · 좌우 자동 margin · 독서 가독성 우선</p>
+        <div class="page-links">
+          <button class="page-link" data-open-peek>📄 하위 페이지 A</button>
+          <button class="page-link" data-open-peek>📄 하위 페이지 B</button>
+          <button class="page-link" data-open-peek>📄 하위 페이지 C</button>
+        </div>
+        <div style="margin-top:24px; font-size:14px; line-height:1.7; color:#37352f;">
+          <p>Notion 웹은 media query 가 아니라 JS 가 window.innerWidth 로 판단해서 .layout 클래스를 런타임 swap 합니다 (desktop ↔ tablet ↔ phone ↔ side-peek ↔ center-peek). 본문 폭은 기본 모드에서만 max 720 으로 고정, peek 열림 상태에서는 1fr 로 풀려 frame 이 줄어드는 만큼 content 도 따라 줄어듭니다.</p>
+          <p>사이드바는 기본 270, 최소 270, 최대 600. 사용자가 드래그로 폭을 조정할 수 있으며 키보드 화살표로도 조정 가능합니다 (role="separator"). 접힘 상태에서는 햄버거 버튼이 표시되고, 호버 시 floating drawer로 프리뷰, 클릭 시 inline 복원됩니다.</p>
+          <p>Side peek은 기본 651.5, 최소 564, 최대 1710의 드로어입니다. 메인 프레임 위에 오른쪽에서 슬라이드로 열리며, 사이드바와 상호 조정 규칙이 있습니다 — 조정 중인 주체가 우선이며 상대는 자동으로 접히거나 닫힙니다.</p>
+          <p>Library panel은 "더 보기" 진입 시 사이드바 우측에서 나오는 제3의 드로어입니다. 폭 320, URL path 라우팅 기반이며 peek와 상호 배타적입니다. 사이드바 z-index보다 낮아 사이드바 밑에서 슬라이드 나오는 시각 효과를 가집니다.</p>
+          <p>Center peek은 모달 형태로 화면 중앙에 뜨며 backdrop dim이 적용됩니다. 내부 콘텐츠 폭은 960이고, center-peek-with-layout-panel 변형은 우측 sub-panel(280px)을 동시에 표시합니다.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Peek (absolute inside frame; center mode면 fixed 모달로 전환) -->
+    <aside class="peek" id="peek">
+      <button class="peek-takeover-back" id="btn-peek-takeover-back" aria-label="peek 닫기">←</button>
+      <div class="peek-resizer"></div>
+      <div class="peek__header">
+        <span class="nav">
+          <button id="btn-peek-back" aria-label="Back" disabled>←</button>
+          <span>peek</span>
+        </span>
+        <span class="w">
+          <span id="peek-mode-label">side</span>
+          · <span id="w-peek">651</span> / 564~1710
+        </span>
+        <span class="nav">
+          <button id="btn-peek-mode" aria-label="Toggle peek mode" title="side ↔ center ↔ center+panel">◨</button>
+          <button class="panel-close" id="btn-close-peek" aria-label="close peek">✕</button>
+        </span>
+      </div>
+      <div class="peek__body">
+        <div class="peek-main">
+          <div id="peek-title">우측 드로어 · position: absolute · 슬라이드인</div>
+          <br>
+          <div id="peek-stack-info" class="peek__stack-label">stack depth: 0</div>
+          <br>
+          <button class="page-link" data-peek-push>📄 peek 안에서 다른 페이지 열기</button>
+        </div>
+        <div class="peek-sub">
+          <b>sub-panel</b><br><br>
+          center-peek-with-layout-panel 모드에서만 노출되는 우측 보조 패널 (comments/properties 등).
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- Library panel (fixed overlay) -->
+  <aside class="library" id="library">
+    <div class="library__header">
+      <span>library panel</span>
+      <span class="w"><span id="w-library">320</span> / 320~600</span>
+      <button class="panel-close" id="btn-close-library" aria-label="close library">✕</button>
+    </div>
+    <div class="library__body">
+      사이드바 옆 fixed overlay<br>
+      URL routed (/library/...)<br><br>
+      드래그로 320~600 범위 조절
+    </div>
+    <div class="library-resizer"></div>
+  </aside>
+</div>
+
+<div class="info" id="info">vw: —</div>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const body = document.body;
+  const state = {
+    sidebar: 270,
+    library: 320,
+    peek: 651.5,
+    libraryOpen: false,
+    peekOpen: false,
+    peekMode: 'side',               // 'side' | 'center' | 'center-panel'
+    peekStack: [],                  // peek 안에서 페이지 push (뒤로가기)
+    phoneDrawer: true,
+    sidebarAutoCollapsed: false,    // main<430일 때 자동 접힘 (peek/viewport 무관)
+    userCollapsed: false,
+    sidebarRestored: true,          // 기본: 펼쳐진 상태 (phone/auto 상태도 오버라이드)
+    hoverPreview: false,
+    layout: 'desktop',
+  };
+  const MIN = { sidebar: 270, library: 320, peek: 564 };
+  const MAX = { sidebar: 600, library: 600, peek: 1710 };
+  const MAIN_MIN = 430;            // 실측: main minWidth = 430, 이하 시 localSidebar 접힘
+  // 실측: media queries (width <= 768px), (width <= 1020px)
+  const BREAK = { phone: 768, tablet: 1020 };
+
+  // 뷰포트 축소 시 사이드바 effective 폭 계산
+  // peek/library와 무관하게, 뷰포트가 (sidebar + main_min) 보다 좁아지면 사이드바 축소
+  const computeEffectiveSidebar = () => {
+    const peekW = state.peekOpen && state.peekMode === 'side' ? state.peek : 0;
+    const need = MAIN_MIN + peekW;
+    const maxAllowed = innerWidth - need;
+    if (maxAllowed < MIN.sidebar) {
+      // 사이드바 자체가 min 이하로 밀리면 접힘 (phone 레이아웃 또는 auto-collapsed가 담당)
+      return MIN.sidebar;  // 접힘 CSS가 별도 처리하므로 값은 min 유지
+    }
+    return Math.min(state.sidebar, maxAllowed);
+  };
+
+  // Notion 실 동작: JS 가 window.innerWidth 로 판단해서 .layout 클래스 런타임 swap
+  // (media query 로는 미사용. 뷰포트 리사이즈마다 재계산)
+  // 우선순위: center peek > side peek > viewport breakpoint (phone/tablet) > desktop
+  const decideLayout = () => {
+    if (state.peekOpen && (state.peekMode === 'center' || state.peekMode === 'center-panel')) return 'center-peek';
+    if (state.peekOpen) return 'side-peek';
+    if (innerWidth <= BREAK.phone) return 'phone';
+    if (innerWidth <= BREAK.tablet) return 'tablet';
+    return 'desktop';
+  };
+
+  // 현재 main(frame) 사용 가능 폭 계산
+  const mainAvailable = () => {
+    const sbW = (state.layout === 'phone' || state.sidebarAutoCollapsed) ? 0 : computeEffectiveSidebar();
+    const pkW = state.peekOpen ? state.peek : 0;
+    return innerWidth - sbW - pkW;
+  };
+
+  // 사이드바 자동 접힘 — peek 가 열린 상태에서 main<430 이 되는 경우만.
+  // (phone/tablet 전환 시의 sidebar 접힘은 별도 — CSS 의 body.layout-phone .sidebar 규칙이 처리)
+  const updateSidebarAutoCollapse = () => {
+    if (!state.peekOpen || state.peekMode !== 'side') {
+      state.sidebarAutoCollapsed = false;
+      return;
+    }
+    const mainWithSidebar = innerWidth - state.sidebar - state.peek;
+    if (!state.sidebarAutoCollapsed && mainWithSidebar < MAIN_MIN) {
+      state.sidebarAutoCollapsed = true;
+    } else if (state.sidebarAutoCollapsed && mainWithSidebar >= MAIN_MIN + 16) {
+      state.sidebarAutoCollapsed = false;
+    }
+  };
+
+  // peek drag 실효 max: main이 430 이상 유지되도록 soft cap
+  const effectivePeekMax = () => {
+    const sbW = (state.layout === 'phone' || state.sidebarAutoCollapsed) ? 0 : state.sidebar;
+    // peek 최대 = vw - sidebar - main_min (main 430 확보)
+    const roomForPeek = innerWidth - sbW - MAIN_MIN;
+    return Math.max(MIN.peek, Math.min(MAX.peek, roomForPeek));
+  };
+
+  const applyLayoutClass = () => {
+    body.classList.remove('layout-desktop', 'layout-tablet', 'layout-phone', 'layout-side-peek', 'layout-center-peek');
+    body.classList.add('layout-' + state.layout);
+  };
+
+  const apply = () => {
+    state.layout = decideLayout();
+    // peek 열림으로 main<430이 되는 상황이면 사이드바를 먼저 자동 접기
+    // (peek 폭은 뷰포트 축소와 무관하게 보존 — Notion 실 동작)
+    updateSidebarAutoCollapse();
+    applyLayoutClass();
+
+    // Peek takeover: peek 폭이 뷰포트 이상이 될 때만 전체화면으로 덮음
+    // (main 이 0 이하로 밀리는 순간 = viewport <= peek)
+    const peekTakeover = state.peekOpen && state.peekMode === 'side'
+      && (innerWidth <= state.peek);
+    body.classList.toggle('peek-takeover', peekTakeover);
+    body.classList.toggle('sidebar-auto-collapsed', state.sidebarAutoCollapsed && !peekTakeover);
+    body.classList.toggle('user-collapsed', state.userCollapsed);
+    body.classList.toggle('sidebar-restored', state.sidebarRestored && !state.sidebarAutoCollapsed && !peekTakeover);
+    body.classList.toggle('peek-open', state.peekOpen);
+    body.classList.toggle('peek-center', state.peekOpen && (state.peekMode === 'center' || state.peekMode === 'center-panel'));
+    body.classList.toggle('peek-center-panel', state.peekOpen && state.peekMode === 'center-panel');
+    document.querySelector('.sidebar').classList.toggle(
+      'hover-preview',
+      state.hoverPreview && (peekTakeover || (state.userCollapsed && !state.sidebarRestored))
+    );
+
+    // 사이드바 width는 항상 state.sidebar (사용자 의도값).
+    // effectiveSidebar는 뷰포트 축소 시 자동으로 줄어듦 — flex-basis/width 에는 effective를 사용
+    const eff = computeEffectiveSidebar();
+    const vwShrunk = eff < state.sidebar && !state.sidebarAutoCollapsed;
+    body.classList.toggle('sidebar-vw-shrunk', vwShrunk);
+    // drawer 모드일 땐 position:fixed로 flex에서 빠지므로 frame이 자동으로 전체 영역 차지
+    root.style.setProperty('--sidebar', state.sidebar + 'px');
+    root.style.setProperty('--sidebar-effective', eff + 'px');
+    root.style.setProperty('--library', state.library + 'px');
+    root.style.setProperty('--peek', state.peek + 'px');
+    document.getElementById('w-sidebar').textContent = vwShrunk
+      ? Math.round(eff) + ' / ' + Math.round(state.sidebar)
+      : Math.round(state.sidebar);
+    document.getElementById('w-library').textContent = Math.round(state.library);
+    document.getElementById('w-peek').textContent = state.peek.toFixed(1);
+    document.getElementById('library').classList.toggle('open', state.libraryOpen);
+    document.getElementById('peek').classList.toggle('open', state.peekOpen);
+    document.getElementById('btn-library').classList.toggle('active', state.libraryOpen);
+    document.getElementById('peek-mode-label').textContent = state.peekMode;
+    document.getElementById('btn-peek-back').disabled = state.peekStack.length === 0;
+    document.getElementById('peek-stack-info').textContent = 'stack depth: ' + state.peekStack.length;
+    document.getElementById('peek-title').textContent = state.peekStack.length
+      ? '페이지 depth ' + state.peekStack.length + ' (push된 상태)'
+      : '우측 드로어 · position: absolute · 슬라이드인';
+
+    // Phone 모드 or 자동 접힘: sidebar는 drawer로 숨겨짐. 햄버거로 열기
+    const sb = document.querySelector('.sidebar');
+    const drawerMode = state.layout === 'phone' || state.sidebarAutoCollapsed;
+    if (drawerMode) {
+      sb.classList.toggle('drawer-open', state.phoneDrawer);
+    } else {
+      sb.classList.remove('drawer-open');
+      state.phoneDrawer = false; // drawer 아닌 상태로 돌아가면 토글 초기화
+    }
+
+    const peekEff = effectivePeekMax();
+    const mainW = mainAvailable();
+    const sbEff = computeEffectiveSidebar();
+    const sbState = state.sidebarAutoCollapsed
+      ? `${Math.round(state.sidebar)} (auto-collapsed)`
+      : sbEff < state.sidebar
+        ? `${Math.round(sbEff)}/${Math.round(state.sidebar)} (vw-shrunk)`
+        : `${Math.round(state.sidebar)}`;
+    document.getElementById('info').textContent =
+      `vw: ${innerWidth} · dpr: ${devicePixelRatio} · layout: ${state.layout}` +
+      ` · sidebar: ${sbState}` +
+      ` · library: ${state.libraryOpen ? Math.round(state.library) + ' (320~600)' : 'closed'}` +
+      ` · peek: ${state.peek.toFixed(1)} (${MIN.peek}~${peekEff})` +
+      ` · main: ${Math.round(mainW)} (min ${MAIN_MIN})`;
+  };
+
+  // Sidebar drag
+  const sbRes = document.querySelector('.sidebar-resizer');
+  sbRes.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    sbRes.setPointerCapture(e.pointerId);
+    sbRes.classList.add('dragging');
+    body.classList.add('sidebar-dragging');
+    const startX = e.clientX, startW = state.sidebar;
+    const onMove = (ev) => {
+      let w = startW + (ev.clientX - startX);
+      w = Math.max(MIN.sidebar, Math.min(MAX.sidebar, w));
+      state.sidebar = w;
+      // 사이드바 확장으로 main<430 이 되면 side peek 닫기 (스펙)
+      if (state.peekOpen && state.peekMode === 'side') {
+        const main = innerWidth - state.sidebar - state.peek;
+        if (main < MAIN_MIN) {
+          state.peekOpen = false;
+          state.peekStack = [];
+        }
+      }
+      apply();
+    };
+    const onUp = () => {
+      sbRes.classList.remove('dragging');
+      body.classList.remove('sidebar-dragging');
+      sbRes.removeEventListener('pointermove', onMove);
+      sbRes.removeEventListener('pointerup', onUp);
+    };
+    sbRes.addEventListener('pointermove', onMove);
+    sbRes.addEventListener('pointerup', onUp);
+  });
+  // 키보드 화살표로 사이드바 폭 조정 (스펙: role="separator")
+  sbRes.addEventListener('keydown', (e) => {
+    const step = e.shiftKey ? 50 : 10;
+    if (e.key === 'ArrowLeft') {
+      state.sidebar = Math.max(MIN.sidebar, state.sidebar - step);
+    } else if (e.key === 'ArrowRight') {
+      state.sidebar = Math.min(MAX.sidebar, state.sidebar + step);
+    } else return;
+    // 사이드바 확장으로 main<430 이 되면 side peek 닫기
+    if (state.peekOpen && state.peekMode === 'side') {
+      const main = innerWidth - state.sidebar - state.peek;
+      if (main < MAIN_MIN) { state.peekOpen = false; state.peekStack = []; }
+    }
+    apply(); e.preventDefault();
+  });
+
+  // Library drag (right edge, dragging right expands)
+  const libRes = document.querySelector('.library-resizer');
+  libRes.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    libRes.setPointerCapture(e.pointerId);
+    libRes.classList.add('dragging');
+    const startX = e.clientX, startW = state.library;
+    const onMove = (ev) => {
+      let w = startW + (ev.clientX - startX);
+      w = Math.max(MIN.library, Math.min(MAX.library, w));
+      state.library = w;
+      apply();
+    };
+    const onUp = () => {
+      libRes.classList.remove('dragging');
+      libRes.removeEventListener('pointermove', onMove);
+      libRes.removeEventListener('pointerup', onUp);
+    };
+    libRes.addEventListener('pointermove', onMove);
+    libRes.addEventListener('pointerup', onUp);
+  });
+
+  // Peek drag (from its left edge, dragging left expands peek)
+  const pkRes = document.querySelector('.peek-resizer');
+  pkRes.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pkRes.setPointerCapture(e.pointerId);
+    const startX = e.clientX, startW = state.peek;
+    const onMove = (ev) => {
+      // Snap to device pixel (observed Notion behavior)
+      let raw = startW - (ev.clientX - startX);
+      const snapped = Math.round(raw * devicePixelRatio) / devicePixelRatio;
+      // peek 를 키우다 main<430 이 되면 사이드바를 먼저 auto-collapse
+      if (state.peekMode === 'side') {
+        const mainIfKept = innerWidth - state.sidebar - snapped;
+        if (mainIfKept < MAIN_MIN) state.sidebarAutoCollapsed = true;
+      }
+      // sidebar 상태 반영한 실효 max
+      const eff = effectivePeekMax();
+      state.peek = Math.max(MIN.peek, Math.min(eff, snapped));
+      apply();
+    };
+    const onUp = () => {
+      pkRes.removeEventListener('pointermove', onMove);
+      pkRes.removeEventListener('pointerup', onUp);
+    };
+    pkRes.addEventListener('pointermove', onMove);
+    pkRes.addEventListener('pointerup', onUp);
+  });
+
+  // 사이드바의 "··· 더 보기" → library 열기 (mutual exclusion)
+  document.getElementById('btn-library').addEventListener('click', () => {
+    state.libraryOpen = !state.libraryOpen;
+    if (state.libraryOpen) state.peekOpen = false;
+    apply();
+  });
+  // 페이지 내 하위 페이지 링크 → peek 열기 (mutual exclusion)
+  document.querySelectorAll('.page-link[data-open-peek]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.peekOpen = true;
+      state.libraryOpen = false;
+      state.peekStack = [];
+      apply();
+    });
+  });
+  // peek 내부 링크 → 스택 push (새 peek 열지 않고 같은 peek 안에서 페이지 교체)
+  document.querySelector('[data-peek-push]').addEventListener('click', () => {
+    state.peekStack.push({ t: Date.now() });
+    apply();
+  });
+  // peek 뒤로가기
+  document.getElementById('btn-peek-back').addEventListener('click', () => {
+    if (state.peekStack.length) state.peekStack.pop();
+    apply();
+  });
+  // peek mode 전환: side → center → center-panel → side
+  document.getElementById('btn-peek-mode').addEventListener('click', () => {
+    state.peekMode = state.peekMode === 'side' ? 'center'
+      : state.peekMode === 'center' ? 'center-panel' : 'side';
+    apply();
+  });
+  // center peek backdrop 클릭 → 닫기
+  document.getElementById('peek-backdrop').addEventListener('click', () => {
+    state.peekOpen = false;
+    apply();
+  });
+  // 패널 닫기 버튼들
+  document.getElementById('btn-close-peek').addEventListener('click', () => {
+    state.peekOpen = false;
+    state.peekStack = [];
+    apply();
+  });
+  document.getElementById('btn-close-library').addEventListener('click', () => {
+    state.libraryOpen = false;
+    apply();
+  });
+  // Takeover back 버튼: peek 닫기. hover 시 사이드바 플로팅 프리뷰
+  const tbBack = document.getElementById('btn-peek-takeover-back');
+  tbBack.addEventListener('click', () => {
+    state.peekOpen = false;
+    state.peekStack = [];
+    state.hoverPreview = false;
+    apply();
+  });
+  tbBack.addEventListener('pointerenter', () => {
+    if (document.body.classList.contains('peek-takeover')) {
+      state.hoverPreview = true;
+      apply();
+    }
+  });
+  tbBack.addEventListener('pointerleave', (e) => {
+    const sb = document.querySelector('.sidebar');
+    if (sb && e.relatedTarget && sb.contains(e.relatedTarget)) return;
+    state.hoverPreview = false;
+    apply();
+  });
+
+  // « 버튼 — 사이드바 접기
+  document.getElementById('btn-sb-collapse').addEventListener('click', () => {
+    state.userCollapsed = true;
+    state.sidebarRestored = false;
+    state.hoverPreview = false;
+    apply();
+  });
+
+  // 햄버거 버튼
+  const hamburger = document.getElementById('btn-hamburger');
+  // hover: floating preview
+  hamburger.addEventListener('pointerenter', () => {
+    if (state.userCollapsed && !state.sidebarRestored) {
+      state.hoverPreview = true;
+      apply();
+    }
+  });
+  hamburger.addEventListener('pointerleave', (e) => {
+    // Don't hide if moving into sidebar itself
+    const sb = document.querySelector('.sidebar');
+    const related = e.relatedTarget;
+    if (sb && related && sb.contains(related)) return;
+    state.hoverPreview = false;
+    apply();
+  });
+  // click: inline 복원. 사이드바를 다시 열면 side peek 은 닫음 (스펙: 양립 불가)
+  hamburger.addEventListener('click', () => {
+    state.sidebarRestored = true;
+    state.userCollapsed = false;
+    state.hoverPreview = false;
+    if (state.peekOpen && state.peekMode === 'side') {
+      state.peekOpen = false;
+      state.peekStack = [];
+    }
+    apply();
+  });
+  // sidebar hover-preview 벗어나면 preview 닫힘
+  document.querySelector('.sidebar').addEventListener('pointerleave', (e) => {
+    if (!state.hoverPreview) return;
+    const ham = document.getElementById('btn-hamburger');
+    const tb = document.getElementById('btn-peek-takeover-back');
+    const related = e.relatedTarget;
+    if (ham && related && ham.contains(related)) return;
+    if (tb && related && tb.contains(related)) return;
+    state.hoverPreview = false;
+    apply();
+  });
+
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    body.classList.add('resizing');
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => body.classList.remove('resizing'), 120);
+    apply();
+  });
+  apply();
+})();
+</script>
+</body>
+</html>
