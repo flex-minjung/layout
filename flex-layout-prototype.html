@@ -1376,27 +1376,30 @@
   body.sheet-open .sheet {
     transform: translateX(0);
   }
-  /* Sheet takeover — 공통 (auto / manual 모두 적용) */
-  body.sheet-takeover .sheet {
+  /* Sheet fullscreen / expanded — 공통 (둘 다 inline 벗어난 큰 패널) */
+  body.sheet-fullscreen .sheet,
+  body.sheet-expanded .sheet {
     position: fixed;
     top: 0; bottom: 0;
     transform: none;
     z-index: 60;
   }
-  body.sheet-takeover .sheet-resizer { display: none; }
-  /* AUTO takeover (vw 강제) — 풀 vw 덮음 (globalSidebar 포함) */
-  body.sheet-takeover-auto .sheet {
+  body.sheet-fullscreen .sheet-resizer,
+  body.sheet-expanded .sheet-resizer { display: none; }
+  /* fullscreen (vw 강제) — 풀 vw 덮음 (globalSidebar 포함) */
+  body.sheet-fullscreen .sheet {
     left: 0;
     right: 0;
     width: 100vw;
   }
-  /* MANUAL takeover (사용자 expand) — globalSidebar 제외 영역 */
-  body.sheet-takeover-manual .sheet {
+  /* expanded (사용자 expand 클릭) — globalSidebar 제외 영역 */
+  body.sheet-expanded .sheet {
     left: var(--navbar);
     right: 0;
     width: auto;
+    box-shadow: none;
   }
-  body.folded.sheet-takeover-manual .sheet {
+  body.folded.sheet-expanded .sheet {
     left: 0;  /* GNB 접힘 시 풀 vw */
   }
   /* Sheet resize handle — 좌측 엣지, 왼쪽 drag = expand */
@@ -1463,13 +1466,15 @@
   }
   .sheet__btn:hover { background: rgba(0,0,0,.05); color: var(--text); }
   .sheet__btn .ico { width: 16px; height: 16px; fill: currentColor; }
-  /* expand 아이콘 — takeover 상태에 따라 토글 */
+  /* expand 아이콘 — fullscreen / expanded 상태에 따라 토글 */
   .sheet__btn .ico-collapse { display: none; }
-  body.sheet-takeover .sheet__btn .ico-expand { display: none; }
-  body.sheet-takeover .sheet__btn .ico-collapse { display: block; }
-  /* viewport 에 의한 자동 takeover 일 때 expand 버튼 숨김 (사용자가 수동으로 줄일 수 없는 상태) */
-  body.sheet-takeover-auto #btn-sheet-expand,
-  body.sheet-takeover-auto #btn-sheet-expand + .sheet__sep { display: none !important; }
+  body.sheet-fullscreen .sheet__btn .ico-expand,
+  body.sheet-expanded .sheet__btn .ico-expand { display: none; }
+  body.sheet-fullscreen .sheet__btn .ico-collapse,
+  body.sheet-expanded .sheet__btn .ico-collapse { display: block; }
+  /* viewport 에 의한 자동 fullscreen 일 때 expand 버튼 숨김 (사용자가 수동으로 줄일 수 없는 상태) */
+  body.sheet-fullscreen #btn-sheet-expand,
+  body.sheet-fullscreen #btn-sheet-expand + .sheet__sep { display: none !important; }
   /* fx Separator — 1px x 16px, --border/tertiary */
   .sheet__sep {
     width: 1px; height: 16px;
@@ -1477,18 +1482,24 @@
     margin: 0 6px;
     flex-shrink: 0;
   }
-  /* sheet 타이틀바 fold 버튼 — globalSidebar 접힘 + takeover 일 때만 노출 (Figma 8383-2717892) */
+  /* sheet 타이틀바 fold 버튼 — globalSidebar 접힘 + fullscreen/expanded 일 때만 노출 (Figma 8383-2717892) */
   .sheet__fold-btn,
   .sheet__fold-sep { display: none !important; }
-  body.folded.sheet-takeover .sheet__fold-btn { display: grid !important; }
-  body.folded.sheet-takeover .sheet__fold-sep { display: block !important; }
+  body.folded.sheet-fullscreen .sheet__fold-btn,
+  body.folded.sheet-expanded .sheet__fold-btn { display: grid !important; }
+  body.folded.sheet-fullscreen .sheet__fold-sep,
+  body.folded.sheet-expanded .sheet__fold-sep { display: block !important; }
 
-  /* sheet 브레드크럼 — 기본 hide, takeover 일 때만 노출 (view 별 토글) */
+  /* sheet 브레드크럼 — 기본 hide, fullscreen/expanded 일 때만 노출 (view 별 토글) */
   .sheet__breadcrumb { display: none !important; }
-  body.sheet-takeover .sheet .sheet__title { display: none; }
-  body.sheet-takeover .sheet .sheet__breadcrumb[data-view="knowledge"] { display: inline-flex !important; }
-  body.sheet-takeover.local-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"] { display: none !important; }
-  body.sheet-takeover.local-view-goals .sheet .sheet__breadcrumb[data-view="goals"] { display: inline-flex !important; }
+  body.sheet-fullscreen .sheet .sheet__title,
+  body.sheet-expanded .sheet .sheet__title { display: none; }
+  body.sheet-fullscreen .sheet .sheet__breadcrumb[data-view="knowledge"],
+  body.sheet-expanded .sheet .sheet__breadcrumb[data-view="knowledge"] { display: inline-flex !important; }
+  body.sheet-fullscreen.local-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"],
+  body.sheet-expanded.local-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"] { display: none !important; }
+  body.sheet-fullscreen.local-view-goals .sheet .sheet__breadcrumb[data-view="goals"],
+  body.sheet-expanded.local-view-goals .sheet .sheet__breadcrumb[data-view="goals"] { display: inline-flex !important; }
   .sheet__body {
     flex: 1; min-height: 0;
     padding: 8px;
@@ -1516,8 +1527,8 @@
   body.folded #app-navbar .app-navbar__header * { pointer-events: auto; }
   /* fold-btn / floating fold-btn 명시적 클릭 가능 보장 */
   #btn-fold, #btn-fold-floating { pointer-events: auto !important; cursor: pointer; }
-  /* 뷰포트 자동 takeover 일 때 floating navbar 의 fold 버튼 숨김 (vw 가 좁아 inline 펼침 불가) */
-  body.sheet-takeover-auto #btn-fold-floating { display: none !important; }
+  /* 뷰포트 자동 fullscreen 일 때 floating navbar 의 fold 버튼 숨김 (vw 가 좁아 inline 펼침 불가) */
+  body.sheet-fullscreen #btn-fold-floating { display: none !important; }
   #btn-fold svg, #btn-fold use,
   #btn-fold-floating svg, #btn-fold-floating use { pointer-events: none; }
   body.folded #app-navbar .app-navbar__header {
@@ -1570,8 +1581,9 @@
     transform: translateX(0);
     pointer-events: auto;
   }
-  /* sheet takeover 중에도 floating-navbar 가 sheet 위로 올라오게 z-index 끌어올림 */
-  body.sheet-takeover .floating-navbar { z-index: 70; }
+  /* sheet fullscreen/expanded 중에도 floating-navbar 가 sheet 위로 올라오게 z-index 끌어올림 */
+  body.sheet-fullscreen .floating-navbar,
+  body.sheet-expanded .floating-navbar { z-index: 70; }
   /* 리사이즈 드래그 중엔 애니메이션 제거 (즉각 반영) */
   body.floating-dragging .floating-navbar { transition: none; }
   /* Floating navbar 의 resize area (우측 엣지) */
@@ -2379,7 +2391,7 @@
       <aside class="sheet" id="sheet">
         <div class="sheet-resizer" id="sheet-resizer"></div>
         <div class="sheet__titlebar">
-          <!-- globalSidebar 접힘 + sheet takeover 시에만 노출 — 클릭 시 GNB 펼침 -->
+          <!-- globalSidebar 접힘 + sheet fullscreen/expanded 시에만 노출 — 클릭 시 GNB 펼침 -->
           <button class="sheet__btn sheet__fold-btn" id="btn-sheet-fold" title="Open globalSidebar" aria-label="Open globalSidebar">
             <svg class="ico"><use href="#i-menu"/></svg>
           </button>
@@ -2392,7 +2404,7 @@
           </button>
           <span class="sheet__sep" aria-hidden="true"></span>
           <span class="sheet__title">타이틀 <span class="sheet__title-size" id="w-sheet">680</span></span>
-          <!-- 풀화면(takeover) 전용 브레드크럼 — page-header 와 동일 구조, view 별 토글 -->
+          <!-- fullscreen / expanded 전용 브레드크럼 — page-header 와 동일 구조, view 별 토글 -->
           <nav class="sheet__breadcrumb page-header__breadcrumb" aria-label="Breadcrumb" data-view="knowledge">
             <span class="breadcrumb-item" title="지식 관리">
               <svg class="ico"><use href="#i-text-book"/></svg>
@@ -2543,7 +2555,7 @@
     localUsed: persisted.localUsed ?? true,    // localSidebar 사용/미사용 (옵션 — 글로벌은 필수)
     endUsed: persisted.endUsed ?? true,        // endPanel 사용/미사용 (옵션)
     sheetOpen: persisted.sheetOpen ?? false,
-    sheetExpanded: persisted.sheetExpanded ?? false,  // 사용자 expand 클릭 시 takeover 강제
+    sheetExpanded: persisted.sheetExpanded ?? false,  // 사용자 expand 클릭 의도 → sheet-expanded 모드
     // auto-fold 추적: true 면 시스템이 접은 것 → 공간 생기면 자동으로 다시 펼침
     //                 false 면 사용자가 직접 접은 것 → 자동으로 펼치지 않음
     localAutoFolded: persisted.localAutoFolded ?? false,
@@ -2682,30 +2694,28 @@
       }
     }
 
-    // sheet takeover: 뷰포트가 desired sheet 폭보다 좁으면 전체 뷰포트 덮음 (Notion peek 방식)
-    // Sheet takeover 정책 — 두 모드 분리
-    //   AUTO   : ① state.sheetWidth >= innerWidth  OR
-    //            ② innerWidth - MAIN_RESERVE < SHEET_MIN  OR
-    //            ③ 사이드바 + sheet 가 겹쳐서 layout 깨지는 경우 (시각적 overlap 방어)
-    //            → vw 가 작아서 강제 풀 vw 덮음 (globalSidebar 포함)
-    //   MANUAL : state.sheetExpanded === true   → 사용자 expand 클릭, globalSidebar 제외 영역
-    //   동시 충족 시 AUTO 우선
+    // Sheet 큰 패널 정책 — 두 모드 분리 (Notion peek 패턴)
+    //   FULLSCREEN : ① state.sheetWidth >= innerWidth  OR
+    //                ② innerWidth - MAIN_RESERVE < SHEET_MIN  OR
+    //                ③ 사이드바 + sheet 가 겹쳐서 layout 깨지는 경우 (시각적 overlap 방어)
+    //                → vw 가 작아서 강제 풀 vw 덮음 (globalSidebar 포함)
+    //   EXPANDED   : state.sheetExpanded === true → 사용자 expand 클릭, globalSidebar 제외 영역
+    //   동시 충족 시 FULLSCREEN 우선
     const sheetVsSidebarsOverlap = (innerWidth - state.sheetWidth) < (navContribution + localContribution);
-    const sheetTakeoverAuto = state.sheetOpen && (
+    const sheetFullscreen = state.sheetOpen && (
       state.sheetWidth >= innerWidth ||
       innerWidth - MAIN_RESERVE < SHEET_MIN ||
       sheetVsSidebarsOverlap
     );
-    const sheetTakeoverManual = state.sheetOpen && state.sheetExpanded && !sheetTakeoverAuto;
-    const sheetTakeover = sheetTakeoverAuto || sheetTakeoverManual;
-    const sheetEff = sheetTakeoverAuto
+    const sheetExpandedMode = state.sheetOpen && state.sheetExpanded && !sheetFullscreen;
+    const sheetCovered = sheetFullscreen || sheetExpandedMode;
+    const sheetEff = sheetFullscreen
       ? innerWidth
-      : sheetTakeoverManual
+      : sheetExpandedMode
         ? (folded ? innerWidth : innerWidth - state.navbarWidth)
         : Math.min(state.sheetWidth, innerWidth);
-    body.classList.toggle('sheet-takeover', sheetTakeover);
-    body.classList.toggle('sheet-takeover-auto', sheetTakeoverAuto);
-    body.classList.toggle('sheet-takeover-manual', sheetTakeoverManual);
+    body.classList.toggle('sheet-fullscreen', sheetFullscreen);
+    body.classList.toggle('sheet-expanded', sheetExpandedMode);
     body.classList.toggle('floating-shown', folded && state.floatingShown);
 
     // Sizes via CSS vars
@@ -2738,8 +2748,8 @@
     document.getElementById('w-end').textContent = endEff < state.endWidth
       ? Math.round(endEff) + ' / ' + Math.round(state.endWidth)
       : Math.round(state.endWidth);
-    // sheet 사이즈 표기 — takeover 시 effective(=innerWidth), 아니면 state.sheetWidth
-    const sheetW = sheetTakeover ? Math.round(sheetEff) : Math.round(state.sheetWidth);
+    // sheet 사이즈 표기 — fullscreen/expanded 시 effective(=innerWidth), 아니면 state.sheetWidth
+    const sheetW = sheetCovered ? Math.round(sheetEff) : Math.round(state.sheetWidth);
     const wSheet = document.getElementById('w-sheet');
     if (wSheet) wSheet.textContent = sheetW;
     document.querySelectorAll('.sheet__breadcrumb-size').forEach(el => { el.textContent = sheetW; });
@@ -2805,8 +2815,8 @@
               : (state.endPanelOpen ? Math.round(endEff) + 'px' : '—')}`,
       narrow ? `narrow mutex (main≤${MAIN_MIN}): active=${state.narrowActive}` : null,
       state.sheetOpen
-        ? (sheetTakeover
-            ? `sheet: ${Math.round(sheetEff)}/${Math.round(state.sheetWidth)}px (takeover)`
+        ? (sheetCovered
+            ? `sheet: ${Math.round(sheetEff)}/${Math.round(state.sheetWidth)}px (${sheetFullscreen ? 'fullscreen' : 'expanded'})`
             : `sheet: ${Math.round(state.sheetWidth)}px (overlay)`)
         : null,
     ].filter(Boolean);
@@ -2859,19 +2869,19 @@
   document.getElementById('btn-fold-floating').addEventListener('click', toggleFold);
   document.getElementById('btn-sheet-close').addEventListener('click', () => {
     state.sheetOpen = false;
-    state.sheetExpanded = false;  // close 시 takeover 도 리셋
+    state.sheetExpanded = false;  // close 시 expanded 의도도 리셋
     apply();
   });
   document.getElementById('btn-sheet-expand').addEventListener('click', () => {
     state.sheetExpanded = !state.sheetExpanded;
     apply();
   });
-  // sheet 타이틀바 fold 버튼 — globalSidebar 토글 (folded 상태에서 takeover 시 노출)
+  // sheet 타이틀바 fold 버튼 — globalSidebar 토글 (folded 상태에서 fullscreen/expanded 시 노출)
   const sheetFoldBtn = document.getElementById('btn-sheet-fold');
   sheetFoldBtn.addEventListener('click', () => {
-    // viewport 자동 takeover (auto) 일 땐 vw 가 좁아서 inline 으로 펼치면 layout 깨짐
+    // viewport 자동 fullscreen 일 땐 vw 가 좁아서 inline 으로 펼치면 layout 깨짐
     // → 호버 floating 만 허용, click 으로 펼치는 동작은 무시
-    if (body.classList.contains('sheet-takeover-auto')) return;
+    if (body.classList.contains('sheet-fullscreen')) return;
     toggleFold();
   });
   // hover 시 floating-navbar 표시 (sheet 가 GNB 영역 덮고 있는 상태에서 메뉴 접근)
@@ -2892,7 +2902,7 @@
   document.getElementById('floating-navbar').addEventListener('click', (e) => {
     const navItem = e.target.closest('.nav-item');
     if (!navItem) return;
-    if (state.sheetOpen && body.classList.contains('sheet-takeover')) {
+    if (state.sheetOpen && (body.classList.contains('sheet-fullscreen') || body.classList.contains('sheet-expanded'))) {
       state.sheetOpen = false;
       state.sheetExpanded = false;
       state.floatingShown = false;
@@ -3171,12 +3181,12 @@
   //   - main 이 항상 MAIN_RESERVE 이상 보이도록 sheet max 동적 계산
   //   - 시트 키울 때: main < MAIN_RESERVE → cascade fold (local → global)
   //   - 시트 줄일 때: drag 로 접힌 사이드는 cascade unfold (global → local) — 사용자 의도 복원
-  //   - 전체화면(takeover) 모드일 때 drag 비활성 — CSS 로 resizer hide + JS 가드
+  //   - fullscreen/expanded 모드일 때 drag 비활성 — CSS 로 resizer hide + JS 가드
   //   - 모두 접힌 후엔 max = innerWidth - MAIN_RESERVE
   const sheetRes = document.getElementById('sheet-resizer');
-  // takeover 시점에 drag 시작 차단 (capture phase 로 attachDrag 의 pointerdown 보다 먼저 가로채기)
+  // fullscreen/expanded 시점에 drag 시작 차단 (capture phase 로 attachDrag 의 pointerdown 보다 먼저 가로채기)
   sheetRes.addEventListener('pointerdown', (e) => {
-    if (body.classList.contains('sheet-takeover')) { e.stopPropagation(); }
+    if (body.classList.contains('sheet-fullscreen') || body.classList.contains('sheet-expanded')) { e.stopPropagation(); }
   }, true);
   // 드래그 세션 동안 'sheet 가 접은 사이드' 추적 (시트 줄일 때 복원용)
   let sheetDragFoldedLocal = false;
