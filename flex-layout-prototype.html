@@ -429,6 +429,9 @@
   body.header-lnb .page-header__breadcrumb[data-view="knowledge"] { display: inline-flex; }
   body.header-lnb.local-view-goals .page-header__breadcrumb[data-view="knowledge"] { display: none; }
   body.header-lnb.local-view-goals .page-header__breadcrumb[data-view="goals"] { display: inline-flex; }
+  body.header-lnb.local-view-notice .page-header__breadcrumb[data-view="knowledge"],
+  body.header-lnb.local-view-notice .page-header__breadcrumb[data-view="goals"] { display: none; }
+  body.header-lnb.local-view-notice .page-header__breadcrumb[data-view="notice"] { display: inline-flex; }
 
   /* GNB+LNB 모두 접힘 상태: 첫번째(menu) 와 두번째(panel-left) 아이콘 사이 구분선 */
   body.folded.header-lnb.no-local-sidebar .page-header__lnb-reopen::before,
@@ -608,15 +611,19 @@
   body.header-lnb .local-sidebar__content.panel { display: none; }
   /* localSidebar view 토글 — body.local-view-{view} 가 set 되면 해당 view 만 보임 (default knowledge) */
   body.header-lnb.local-view-knowledge .local-sidebar__content[data-view="knowledge"],
-  body.header-lnb:not(.local-view-goals) .local-sidebar__content[data-view="knowledge"] { display: flex; }
+  body.header-lnb:not(.local-view-goals):not(.local-view-notice) .local-sidebar__content[data-view="knowledge"] { display: flex; }
   body.header-lnb.local-view-goals .local-sidebar__content[data-view="goals"] { display: flex; }
   body.header-lnb.local-view-goals .local-sidebar__content[data-view="knowledge"] { display: none; }
+  body.header-lnb.local-view-notice .local-sidebar__content[data-view="notice"] { display: flex; }
+  body.header-lnb.local-view-notice .local-sidebar__content[data-view="knowledge"],
+  body.header-lnb.local-view-notice .local-sidebar__content[data-view="goals"] { display: none; }
 
   /* end-panel view 토글 — knowledge default, goals 시 동일 organisation tree 노출 */
   .end-panel__content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
   .end-panel__content[data-view="goals"] { display: none; }
   body.local-view-goals .end-panel__content[data-view="knowledge"] { display: none; }
   body.local-view-goals .end-panel__content[data-view="goals"] { display: flex; }
+  body.local-view-notice .end-panel__content[data-view="knowledge"] { display: none; }
 
   /* tree row indent (data-depth 0~3) */
   .nav-tree__row { padding-left: 8px; gap: 4px; }
@@ -640,6 +647,380 @@
     font: inherit; font-size: 13px; color: var(--text);
   }
   .ls-search input::placeholder { color: var(--text-dim); }
+
+  /* Notice page-header actions */
+  .page-header__actions { display: none; align-items: center; gap: 6px; margin-left: auto; }
+  body.local-view-notice .page-header__actions[data-view="notice"] { display: inline-flex; }
+  .ph-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 28px; padding: 0 12px;
+    font: inherit; font-size: 13px; font-weight: 500;
+    border: 1px solid transparent; border-radius: 6px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text);
+  }
+  .ph-btn--ghost { border-color: rgba(0,0,0,.08); background: #fff; }
+  .ph-btn--ghost:hover { background: rgba(0,0,0,.03); }
+  .ph-btn--ghost .ico { color: var(--text-weak); fill: currentColor; }
+  .ph-btn--primary { background: #2c2c2c; color: #fff; }
+  .ph-btn--primary:hover { background: #1f1f1f; }
+
+  /* Notice detail (page-main) */
+  .notice-detail {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    align-items: stretch;
+    justify-content: flex-start;
+    color: var(--text);
+    font-size: 14px;
+    overflow-y: auto;
+  }
+  .notice-detail__toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+  }
+  .notice-detail__nav { display: inline-flex; align-items: center; gap: 0; }
+  .notice-detail__crumb {
+    flex: 1; min-width: 0;
+    margin-left: 4px;
+    font-size: 13px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .notice-detail__tools { display: inline-flex; align-items: center; gap: 0; }
+  .notice-detail__body {
+    flex: 1;
+    min-height: 0;
+    padding: 32px clamp(24px, 8%, 80px) 80px;
+    max-width: 920px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    text-align: left;
+  }
+  .notice-detail__tags { display: flex; gap: 6px; }
+  .notice-tag {
+    display: inline-flex; align-items: center;
+    height: 22px; padding: 0 8px;
+    font-size: 12px; color: var(--text-dim);
+    background: rgba(0,0,0,.05);
+    border-radius: 4px;
+  }
+  .notice-detail__title {
+    margin: 4px 0 0;
+    font-size: 26px; font-weight: 700;
+    line-height: 1.3;
+    color: var(--text);
+  }
+  .notice-detail__meta {
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .notice-detail__meta .dot { color: var(--text-dim); }
+  .notice-detail__content { font-size: 14px; line-height: 1.65; color: var(--text); }
+  .notice-detail__content p { margin: 0 0 14px; }
+  .notice-detail__content ul { margin: 0 0 14px; padding-left: 18px; }
+  .notice-detail__content li { margin-bottom: 4px; }
+
+  .notice-attach {
+    margin-top: 8px;
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: #fafafa;
+  }
+  .notice-attach__head {
+    display: inline-flex; align-items: center; gap: 4px;
+    margin-bottom: 10px;
+    font-size: 12px; color: var(--text-dim);
+  }
+  .notice-attach__list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .notice-attach__file {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1 1 220px;
+    min-width: 0;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .notice-attach__file:hover { background: #f6f6f6; }
+  .notice-attach__thumb {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 9px; font-weight: 700;
+    letter-spacing: -.5px;
+  }
+  .notice-attach__thumb--img { background: #6c5ce7; }
+  .notice-attach__thumb--pdf { background: #e74c3c; }
+  .notice-attach__thumb--xlsx { background: #27ae60; }
+  .notice-attach__info { min-width: 0; }
+  .notice-attach__name {
+    font-size: 13px; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .notice-attach__size { font-size: 11px; color: var(--text-dim); }
+
+  .notice-reactions { display: flex; gap: 6px; margin: 4px 0 12px; }
+  .notice-reaction {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 28px; padding: 0 10px;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 14px;
+    background: #fff;
+    font: inherit; font-size: 13px;
+    cursor: pointer;
+  }
+  .notice-reaction:hover { background: rgba(0,0,0,.03); }
+  .notice-reaction--active { background: #eef4fc; border-color: #c5d8f0; color: #3469b4; }
+  .notice-reaction__count { font-weight: 500; }
+  .notice-reaction--add { padding: 0 10px; color: var(--text-dim); }
+
+  .notice-comments {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0,0,0,.06);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .notice-comments__head { font-size: 13px; color: var(--text-dim); }
+  .notice-comments__empty {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 28px 0;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .notice-comments__empty-icon {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: #f1f1f1;
+    font-size: 18px;
+  }
+  .notice-comments__input {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 6px 6px 12px;
+    border: 1px solid rgba(0,0,0,.08);
+    border-radius: 8px;
+    background: #fff;
+  }
+  .notice-comments__input input {
+    flex: 1; min-width: 0;
+    border: 0; outline: none; background: transparent;
+    font: inherit; font-size: 13px; color: var(--text);
+  }
+  .notice-comments__input input::placeholder { color: var(--text-dim); }
+  .notice-comments__send {
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; background: transparent;
+    border-radius: 6px;
+    color: var(--text-dim); cursor: pointer;
+  }
+  .notice-comments__send:hover { background: rgba(0,0,0,.05); color: var(--text); }
+  .notice-comments__send .ico { width: 16px; height: 16px; fill: currentColor; }
+
+  /* Notice view (공지) — Figma NoticeList */
+  .ico.ico-xs { width: 10px; height: 10px; }
+  .notice-controlbar {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+  }
+  .notice-filterbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 46px;
+    padding: 9px 12px;
+    box-shadow: inset 0 -1px 0 0 rgba(0,0,0,.06);
+    overflow: hidden;
+  }
+  .notice-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 28px;
+    padding: 0 10px;
+    background: #f4f4f4;
+    border: 0;
+    border-radius: 8px;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .notice-filter-chip:hover { background: #ececec; }
+  .notice-filter-chip .ico { color: var(--text-weak); fill: currentColor; }
+  .notice-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .notice-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 28px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .notice-tab:hover { background: rgba(0,0,0,.04); color: var(--text); }
+  .notice-tab__count { color: var(--text-dim); font-size: 12px; }
+  .notice-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+  }
+  .notice-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-weak);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .notice-icon-btn:hover { background: rgba(0,0,0,.05); color: var(--text); }
+  .notice-icon-btn .ico { width: 16px; height: 16px; fill: currentColor; }
+  .notice-active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 46px;
+    padding: 9px 12px;
+    box-shadow: inset 0 -1px 0 0 rgba(0,0,0,.06);
+  }
+  .notice-active-chip {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding-left: 8px;
+    background: #eef4fc;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #3469b4;
+    overflow: hidden;
+  }
+  .notice-active-chip .k { font-weight: 500; padding-right: 4px; }
+  .notice-active-chip .v { font-weight: 500; padding-right: 6px; border-left: 1px solid rgba(52,105,180,.2); padding-left: 6px; }
+  .notice-active-chip__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 4px;
+    color: #3469b4;
+    cursor: pointer;
+  }
+  .notice-active-chip__close:hover { background: rgba(52,105,180,.12); }
+  .notice-active-chip__close .ico { width: 12px; height: 12px; fill: currentColor; }
+
+  .notice-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .notice-item {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(0,0,0,.04);
+    cursor: pointer;
+  }
+  .notice-item:hover { background: rgba(0,0,0,.02); }
+  .notice-item--current { background: rgba(0,0,0,.04); }
+  .notice-item--current:hover { background: rgba(0,0,0,.05); }
+  .notice-item__title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .notice-item__title-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+  .notice-item__pin {
+    width: 12px;
+    height: 12px;
+    color: var(--text-weak);
+    fill: currentColor;
+    flex-shrink: 0;
+  }
+  .notice-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .notice-item__meta .dot { color: var(--text-dim); }
+  .notice-item__desc {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+  }
 
   /* nav-item pill (예: "주조직" 같은 보조 라벨) */
   .nav-item__pill {
@@ -781,8 +1162,12 @@
   }
   /* localView 별 main table 토글 (knowledge default, goals 시 다른 테이블 노출) */
   .pm-table-wrap[data-view="goals"] { display: none; }
+  .pm-table-wrap[data-view="notice"] { display: none; }
   body.local-view-goals .pm-table-wrap[data-view="knowledge"] { display: none; }
   body.local-view-goals .pm-table-wrap[data-view="goals"] { display: flex; flex-direction: column; }
+  body.local-view-notice .pm-table-wrap[data-view="knowledge"],
+  body.local-view-notice .pm-table-wrap[data-view="goals"] { display: none; }
+  body.local-view-notice .pm-table-wrap[data-view="notice"] { display: flex; flex-direction: column; padding: 0; }
 
   /* Goals table — 행높이 40, 행간 보더 없음, 트리 들여쓰기, 사이클 pill */
   .pm-table.pm-table--goals tbody td { height: 40px; border-bottom: 0 !important; }
@@ -1322,7 +1707,10 @@
         <symbol id="i-pen-waveline" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M15.793 2.79312C17.012 1.57417 18.9883 1.57417 20.2072 2.79312C21.4262 4.01207 21.4262 5.98838 20.2072 7.20733L7.58325 19.8314C7.2967 20.1184 7.04431 20.3712 6.73918 20.5581C6.47077 20.7226 6.17813 20.8438 5.87202 20.9173C5.52406 21.0009 5.16684 21.0006 4.76128 21.0003L3.00009 21.0002C2.4478 21.0002 2.00009 20.5525 2.00009 20.0002L2.00004 18.2391C1.99972 17.8335 1.99944 17.4763 2.08298 17.1283C2.15647 16.8222 2.27768 16.5296 2.44217 16.2612C2.62915 15.956 2.88194 15.7036 3.16895 15.4171L15.793 2.79312ZM18.793 4.20733C18.3551 3.76943 17.6451 3.76943 17.2072 4.20733L4.64445 16.7701C4.26423 17.1503 4.19479 17.2289 4.14745 17.3062C4.09262 17.3956 4.05221 17.4932 4.02772 17.5952C4.00656 17.6833 4.00009 17.788 4.00009 18.3257V19.0002H4.67463C5.21235 19.0002 5.31702 18.9938 5.40513 18.9726C5.50717 18.9481 5.60471 18.9077 5.69418 18.8529C5.77145 18.8055 5.85004 18.7361 6.23027 18.3559L18.793 5.79312C19.2309 5.35522 19.2309 4.64524 18.793 4.20733Z"/><path d="M21.6747 17.2619C22.0823 17.6346 22.1107 18.2671 21.7381 18.6747L20.7379 19.7689C20.0283 20.5449 19.0458 21 18.0002 21C16.9548 21 15.9726 20.5452 15.2631 19.7696C14.9111 19.3863 14.4549 19.1901 14.0002 19.1901C13.5453 19.1901 13.0889 19.3865 12.7369 19.7701C12.3635 20.1771 11.7309 20.2043 11.3239 19.8309C10.917 19.4575 10.8898 18.8249 11.2632 18.418C11.9735 17.6438 12.9555 17.1901 14.0002 17.1901C15.0449 17.1901 16.0269 17.6438 16.7373 18.418L16.7384 18.4192C17.0897 18.8034 17.5458 19 18.0002 19C18.4545 19 18.9107 18.8033 19.2619 18.4192L20.2619 17.3253C20.6346 16.9177 21.2671 16.8893 21.6747 17.2619Z"/></symbol>
         <symbol id="i-scales" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 3.5C11.2822 3.5 10.6715 4.09658 10.6715 4.86842C10.6715 5.64026 11.2822 6.23684 12 6.23684C12.7178 6.23684 13.3285 5.64026 13.3285 4.86842C13.3285 4.09658 12.7178 3.5 12 3.5ZM8.82106 3.86842C9.24032 2.50408 10.495 1.5 12 1.5C13.505 1.5 14.7597 2.50408 15.1789 3.86842L19.4513 3.86842C20.0036 3.86842 20.4513 4.31614 20.4513 4.86842C20.4513 5.42071 20.0036 5.86842 19.4513 5.86842L15.1789 5.86842C14.857 6.91615 14.0423 7.75142 13 8.08267V19.5H19.4513C20.0036 19.5 20.4513 19.9477 20.4513 20.5C20.4513 21.0523 20.0036 21.5 19.4513 21.5L4.54869 21.5C3.9964 21.5 3.54869 21.0523 3.54869 20.5C3.54869 19.9477 3.9964 19.5 4.54869 19.5H11V8.08267C9.95767 7.75142 9.14303 6.91615 8.82106 5.86842L4.54869 5.86843C3.9964 5.86843 3.54869 5.42071 3.54869 4.86843C3.54869 4.31614 3.9964 3.86843 4.54869 3.86843L8.82106 3.86842ZM5.94581 7.18421C6.28749 7.18421 6.60552 7.35866 6.78914 7.64681L9.56968 12.0103C9.57555 12.0195 9.58141 12.0287 9.58725 12.0378C9.73904 12.2758 9.87847 12.4944 9.99257 12.8378C10.0423 12.9874 10.077 13.172 10.0978 13.303C10.1186 13.4341 10.1426 13.6203 10.1416 13.7779C10.1396 14.0997 10.1131 14.2404 10.063 14.4358C9.58613 16.2929 7.94805 17.7105 5.94581 17.7105C3.94357 17.7105 2.30549 16.2929 1.82864 14.4358C1.77848 14.2404 1.75202 14.0997 1.75003 13.7779C1.74905 13.6203 1.77307 13.4341 1.79384 13.303C1.8146 13.172 1.84934 12.9874 1.89905 12.8378C2.01314 12.4944 2.15257 12.2758 2.30436 12.0378C2.3102 12.0287 2.31606 12.0195 2.32194 12.0103L5.10248 7.64681C5.2861 7.35866 5.60413 7.18421 5.94581 7.18421ZM3.76138 13.9211C3.76266 13.9261 3.76412 13.9318 3.7658 13.9384C4.03538 14.9882 4.9338 15.7105 5.94581 15.7105C6.95782 15.7105 7.85624 14.9882 8.12581 13.9384C8.12749 13.9318 8.12896 13.9261 8.13023 13.9211H3.76138ZM7.14127 11.9211H4.75035L5.94581 10.045L7.14127 11.9211ZM18.0542 7.18421C18.3959 7.18421 18.7139 7.35866 18.8975 7.64681L21.6781 12.0103C21.6839 12.0195 21.6898 12.0287 21.6956 12.0378C21.8474 12.2758 21.9869 12.4944 22.1009 12.8378C22.1507 12.9874 22.1854 13.172 22.2062 13.303C22.2269 13.4341 22.2509 13.6203 22.25 13.7779C22.248 14.0996 22.2215 14.2404 22.1714 14.4358C21.6945 16.2929 20.0564 17.7105 18.0542 17.7105C16.0519 17.7105 14.4139 16.2929 13.937 14.4358C13.8869 14.2404 13.8604 14.0997 13.8584 13.7779C13.8574 13.6203 13.8814 13.4341 13.9022 13.303C13.923 13.172 13.9577 12.9874 14.0074 12.8378C14.1215 12.4944 14.2609 12.2758 14.4127 12.0378C14.4186 12.0287 14.4244 12.0195 14.4303 12.0103L17.2109 7.64681C17.3945 7.35866 17.7125 7.18421 18.0542 7.18421ZM16.8587 11.9211H19.2496L18.0542 10.045L16.8587 11.9211ZM20.2386 13.9211C20.2373 13.9261 20.2359 13.9318 20.2342 13.9384C19.9646 14.9882 19.0662 15.7105 18.0542 15.7105C17.0422 15.7105 16.1438 14.9882 15.8742 13.9384C15.8725 13.9318 15.871 13.9261 15.8698 13.9211H20.2386Z"/></symbol>
         <symbol id="i-bank" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M11.8322 2.50758C11.9438 2.49747 12.0562 2.49747 12.1678 2.50758C12.2967 2.51925 12.4192 2.54761 12.508 2.56815C12.5163 2.57009 12.5244 2.57196 12.5322 2.57374L19.1358 4.08912C19.312 4.12952 19.4936 4.17118 19.6483 4.21919C19.8235 4.27357 20.028 4.35421 20.2276 4.50267C20.5054 4.70931 20.7196 4.9871 20.8512 5.30355C20.9449 5.52886 20.9755 5.74371 20.9885 5.926C21.0001 6.08892 21 6.27797 21 6.46563V7.54675C21 7.77747 21.0001 8.00497 20.9848 8.19817C20.968 8.4106 20.9281 8.6666 20.7999 8.92637C20.6232 9.28452 20.3382 9.58171 19.9803 9.77C19.718 9.90803 19.4583 9.95108 19.2457 9.96903C19.2379 9.96968 19.2301 9.97031 19.2222 9.97091V15.3425C19.2301 15.3431 19.2379 15.3437 19.2457 15.3444C19.4583 15.3623 19.718 15.4054 19.9803 15.5434C20.3382 15.7317 20.6232 16.0289 20.7999 16.3871C20.9281 16.6468 20.968 16.9028 20.9848 17.1153C21.0001 17.3085 21 17.536 21 17.7667V18.5617C21 18.7924 21.0001 19.0199 20.9848 19.2131C20.968 19.4255 20.9281 19.6815 20.7999 19.9413C20.6232 20.2994 20.3382 20.5966 19.9803 20.7849C19.718 20.923 19.4583 20.966 19.2457 20.984C19.0546 21.0001 18.8307 21 18.6089 21H5.39108C5.1693 21 4.94539 21.0001 4.75433 20.984C4.54166 20.966 4.28203 20.923 4.0197 20.7849C3.66185 20.5966 3.37682 20.2994 3.20011 19.9413C3.07193 19.6815 3.03203 19.4255 3.01523 19.2131C2.99994 19.0199 2.99997 18.7924 3 18.5616L3 17.7667C2.99997 17.536 2.99994 17.3085 3.01523 17.1153C3.03203 16.9028 3.07193 16.6468 3.20011 16.3871C3.37682 16.0289 3.66185 15.7317 4.0197 15.5434C4.28203 15.4054 4.54166 15.3623 4.75433 15.3444C4.76209 15.3437 4.76991 15.3431 4.77778 15.3425V9.97091C4.76991 9.97031 4.76209 9.96968 4.75433 9.96903C4.54166 9.95108 4.28203 9.90803 4.0197 9.77C3.66185 9.58171 3.37682 9.28452 3.20011 8.92637C3.07193 8.6666 3.03203 8.41059 3.01523 8.19817C2.99994 8.00496 2.99997 7.77745 3 7.54672C3 7.53662 3 7.52652 3 7.51641L3 6.49154C3 6.48291 3 6.47428 3 6.46564C2.99997 6.27798 2.99995 6.08893 3.01154 5.926C3.0245 5.74371 3.0551 5.52886 3.1488 5.30354C3.2804 4.98709 3.49465 4.70931 3.77241 4.50267C3.97196 4.35421 4.17647 4.27357 4.35166 4.21919C4.50636 4.17118 4.68804 4.12951 4.86423 4.08911C4.87285 4.08714 4.88145 4.08516 4.89003 4.08319L11.4678 2.57374C11.4756 2.57196 11.4837 2.57009 11.492 2.56815C11.5808 2.54761 11.7033 2.51925 11.8322 2.50758ZM6.77778 9.98507V15.3284H8.77778V9.98507H6.77778ZM5.42222 7.98507C5.22381 7.98507 5.09697 7.98461 5.0053 7.981C5.0005 7.88056 5 7.74146 5 7.51641V6.49154C5 6.30445 5.00041 6.19251 5.00397 6.11228C5.0273 6.10602 5.0551 6.0989 5.08855 6.0907C5.15679 6.07399 5.23595 6.0558 5.33736 6.03253L11.9151 4.52307L11.9864 4.50683C11.9914 4.50571 11.9959 4.50471 12 4.50381C12.0041 4.50471 12.0086 4.50571 12.0136 4.50683L12.0849 4.52307L18.6626 6.03253C18.7641 6.0558 18.8432 6.07399 18.9114 6.09071C18.9449 6.0989 18.9727 6.10602 18.996 6.11228C18.9996 6.19251 19 6.30445 19 6.49155V7.51642C19 7.74146 18.9995 7.88055 18.9947 7.981C18.903 7.98461 18.7762 7.98507 18.5778 7.98507H5.42222ZM10.7778 9.98507V15.3284H13.2222V9.98507H10.7778ZM15.2222 9.98507V15.3284H17.2222V9.98507H15.2222ZM5.42222 17.3284C5.22382 17.3284 5.09698 17.3288 5.0053 17.3324C5.0005 17.4329 5 17.572 5 17.797V18.5313C5 18.7564 5.00049 18.8955 5.0053 18.9959C5.09697 18.9995 5.22382 19 5.42222 19H18.5778C18.7762 19 18.903 18.9995 18.9947 18.9959C18.9995 18.8955 19 18.7564 19 18.5313V17.797C19 17.572 18.9995 17.4329 18.9947 17.3324C18.903 17.3288 18.7762 17.3284 18.5778 17.3284H5.42222Z"/></symbol>
-        <symbol id="i-filter" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="17" x2="14" y2="17"/></symbol>
+        <symbol id="i-filter" viewBox="0 0 24 24"><g style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="17" x2="14" y2="17"/></g></symbol>
+        <symbol id="i-arrows-up-down" viewBox="0 0 24 24"><g style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><line x1="7" y1="4" x2="7" y2="18"/><polyline points="3 8 7 4 11 8"/><line x1="17" y1="6" x2="17" y2="20"/><polyline points="13 16 17 20 21 16"/></g></symbol>
+        <symbol id="i-link" viewBox="0 0 24 24"><g style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07L11.5 4.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07L12.5 19.5"/></g></symbol>
+        <symbol id="i-send" viewBox="0 0 24 24"><g style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></g></symbol>
         <symbol id="i-arrow-left" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
         <symbol id="i-chevron-2-left" viewBox="0 0 24 24"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></symbol>
         <symbol id="i-text-document" viewBox="0 0 24 24">
@@ -1351,7 +1739,7 @@
           <div class="nav-divider"></div>
 
           <div class="nav-item"><svg class="ico"><use href="#i-house"/></svg><span class="nav-item__label">홈 피드</span></div>
-          <div class="nav-item"><svg class="ico"><use href="#i-pin"/></svg><span class="nav-item__label">공지</span></div>
+          <div class="nav-item" data-gnb="notice"><svg class="ico"><use href="#i-pin"/></svg><span class="nav-item__label">공지</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-smile-face"/></svg><span class="nav-item__label">구성원</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-message-2"/></svg><span class="nav-item__label">원온원</span></div>
           <div class="nav-item" data-gnb="goals-parent">
@@ -1401,7 +1789,7 @@
           <div class="nav-item"><svg class="ico"><use href="#i-bell"/></svg><span class="nav-item__label">알림</span><span class="nav-item__badge">7</span></div>
           <div class="nav-divider"></div>
           <div class="nav-item"><svg class="ico"><use href="#i-house"/></svg><span class="nav-item__label">홈 피드</span></div>
-          <div class="nav-item"><svg class="ico"><use href="#i-pin"/></svg><span class="nav-item__label">공지</span></div>
+          <div class="nav-item" data-gnb="notice"><svg class="ico"><use href="#i-pin"/></svg><span class="nav-item__label">공지</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-smile-face"/></svg><span class="nav-item__label">구성원</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-message-2"/></svg><span class="nav-item__label">원온원</span></div>
           <div class="nav-item" data-gnb="goals-parent">
@@ -1504,6 +1892,93 @@
             </nav>
           </div>
 
+          <!-- localSidebar — notice view (공지) -->
+          <div class="local-sidebar__content lnb" data-view="notice">
+            <div class="local-sidebar__lnb-header">
+              <span class="page-header__title">공지</span>
+            </div>
+            <div class="notice-controlbar">
+              <div class="notice-filterbar">
+                <button class="notice-filter-chip">
+                  <span>전체</span>
+                  <svg class="ico ico-xs"><use href="#i-chevron-down"/></svg>
+                </button>
+                <div class="notice-tabs">
+                  <button class="notice-tab"><span>임시 저장</span><span class="notice-tab__count">9</span></button>
+                  <button class="notice-tab"><span>조회 불가</span><span class="notice-tab__count">9</span></button>
+                </div>
+                <div class="notice-actions">
+                  <button class="notice-icon-btn" title="검색" aria-label="검색"><svg class="ico"><use href="#i-magnifier"/></svg></button>
+                  <button class="notice-icon-btn" title="필터" aria-label="필터"><svg class="ico"><use href="#i-filter"/></svg></button>
+                  <button class="notice-icon-btn" title="정렬" aria-label="정렬"><svg class="ico"><use href="#i-arrows-up-down"/></svg></button>
+                </div>
+              </div>
+              <div class="notice-active-filters">
+                <span class="notice-active-chip"><span class="k">상태</span><span class="v">벨류</span><button class="notice-active-chip__close" aria-label="제거"><svg class="ico"><use href="#i-close"/></svg></button></span>
+                <span class="notice-active-chip"><span class="k">상태</span><span class="v">벨류</span><button class="notice-active-chip__close" aria-label="제거"><svg class="ico"><use href="#i-close"/></svg></button></span>
+                <span class="notice-active-chip"><span class="k">상태</span><span class="v">벨류</span><button class="notice-active-chip__close" aria-label="제거"><svg class="ico"><use href="#i-close"/></svg></button></span>
+              </div>
+            </div>
+            <div class="notice-list">
+              <div class="notice-item notice-item--current">
+                <div class="notice-item__title">
+                  <span class="notice-item__title-text">공지 타이틀</span>
+                  <svg class="notice-item__pin"><use href="#i-pin"/></svg>
+                </div>
+                <div class="notice-item__meta">
+                  <span>카테고리</span><span class="dot">·</span><span>작성자</span><span class="dot">·</span><span>1달 전</span>
+                </div>
+                <div class="notice-item__desc">디스크립션</div>
+              </div>
+              <div class="notice-item">
+                <div class="notice-item__title">
+                  <span class="notice-item__title-text">공지 타이틀</span>
+                  <svg class="notice-item__pin"><use href="#i-pin"/></svg>
+                </div>
+                <div class="notice-item__meta">
+                  <span>카테고리</span><span class="dot">·</span><span>작성자</span><span class="dot">·</span><span>1달 전</span>
+                </div>
+                <div class="notice-item__desc">디스크립션</div>
+              </div>
+              <div class="notice-item">
+                <div class="notice-item__title">
+                  <span class="notice-item__title-text">공지 타이틀</span>
+                </div>
+                <div class="notice-item__meta">
+                  <span>카테고리</span><span class="dot">·</span><span>작성자</span><span class="dot">·</span><span>1달 전</span>
+                </div>
+                <div class="notice-item__desc">디스크립션</div>
+              </div>
+              <div class="notice-item">
+                <div class="notice-item__title">
+                  <span class="notice-item__title-text">공지 타이틀</span>
+                </div>
+                <div class="notice-item__meta">
+                  <span>Dugout Letter</span><span class="dot">·</span><span>이성해</span><span class="dot">·</span><span>1달 전</span>
+                </div>
+                <div class="notice-item__desc">안녕하세요 PX Team 입니다! Dugout Letter #49이 찾아왔습니다! 🤩 이번 1월- 2월에도 우리팀의 크고 작은 이야기들이 쌓였습니다.</div>
+              </div>
+              <div class="notice-item">
+                <div class="notice-item__title">
+                  <span class="notice-item__title-text">2026년 상반기 평가 안내</span>
+                </div>
+                <div class="notice-item__meta">
+                  <span>인사</span><span class="dot">·</span><span>김인사</span><span class="dot">·</span><span>2주 전</span>
+                </div>
+                <div class="notice-item__desc">2026년 상반기 평가 일정 및 절차를 공유합니다. 자세한 내용은 본문을 참고해 주세요.</div>
+              </div>
+              <div class="notice-item">
+                <div class="notice-item__title">
+                  <span class="notice-item__title-text">사내 라운지 리뉴얼 오픈 안내</span>
+                </div>
+                <div class="notice-item__meta">
+                  <span>총무</span><span class="dot">·</span><span>박총무</span><span class="dot">·</span><span>3주 전</span>
+                </div>
+                <div class="notice-item__desc">3층 사내 라운지가 새 단장을 마치고 오픈했습니다. 이용 시 주의사항을 안내드립니다.</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Panel 모드 컨텐츠 (placeholder, 추후 다른 UI 적용) -->
           <div class="local-sidebar__content panel">
             <div class="region">localSidebar<br><span class="accent" id="w-local">220</span></div>
@@ -1546,6 +2021,17 @@
               </span>
               <span class="breadcrumb-size">(<span id="w-main-bc-goals">—</span>)</span>
             </nav>
+            <nav class="page-header__breadcrumb breadcrumb-notice" aria-label="Breadcrumb" data-view="notice">
+              <span class="breadcrumb-item" title="공지">
+                <svg class="ico"><use href="#i-pin"/></svg>
+                <span>공지</span>
+              </span>
+              <span class="breadcrumb-size">(<span id="w-main-bc-notice">—</span>)</span>
+            </nav>
+            <div class="page-header__actions" data-view="notice">
+              <button class="ph-btn ph-btn--ghost"><span>공지 설정</span><svg class="ico ico-xs"><use href="#i-chevron-down"/></svg></button>
+              <button class="ph-btn ph-btn--primary">공지 추가</button>
+            </div>
             <button class="page-header__end-toggle" id="btn-page-end-toggle" title="Toggle endPanel" aria-label="Toggle endPanel">
               <svg class="ico ico-fx ico-flip-x"><use href="#i-panel-left"/></svg>
             </button>
@@ -1677,6 +2163,91 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <!-- Notice view 본문 (공지 상세) -->
+              <div class="pm-table-wrap" data-view="notice">
+                <div class="notice-detail">
+                  <div class="notice-detail__toolbar">
+                    <div class="notice-detail__nav">
+                      <button class="notice-icon-btn" title="이전 공지" aria-label="이전 공지"><svg class="ico"><use href="#i-chevron-up"/></svg></button>
+                      <button class="notice-icon-btn" title="다음 공지" aria-label="다음 공지"><svg class="ico"><use href="#i-chevron-down"/></svg></button>
+                    </div>
+                    <span class="notice-detail__crumb">2026년 02월 급여 지급 안내</span>
+                    <div class="notice-detail__tools">
+                      <button class="notice-icon-btn" title="링크 복사" aria-label="링크 복사"><svg class="ico"><use href="#i-link"/></svg></button>
+                      <button class="notice-icon-btn" title="더보기" aria-label="더보기"><svg class="ico"><use href="#i-ellipsis-h"/></svg></button>
+                    </div>
+                  </div>
+                  <article class="notice-detail__body">
+                    <div class="notice-detail__tags">
+                      <span class="notice-tag">임시 저장</span>
+                      <span class="notice-tag">승인</span>
+                    </div>
+                    <h1 class="notice-detail__title">2026년 02월 급여 지급 안내</h1>
+                    <div class="notice-detail__meta">
+                      <span>급여 안내</span><span class="dot">·</span><span>부영훈</span><span class="dot">·</span><span>2020. 1. 30 (월) 오전 2:05</span>
+                    </div>
+                    <div class="notice-detail__content">
+                      <p>급여 지급 안내해 드립니다.<br>우리 팀 모두 고생 많으셨어요!<br>급여는 구성원 개인별 계좌로 입금 완료되었습니다.<br>flex를 통한 급여 명세서 알림도 잘 받으셨나요?<br>급여 명세서 확인은 flex '내 프로필'에서 '급여' 탭을 선택하시면 가능해요. 급여에 대해 궁금하신 점은 문의 부탁 드려요!</p>
+                      <p><strong>[메이트 인센티브]</strong></p>
+                      <ul>
+                        <li>메이트 인센티브는 추천하신 구성원의 온보딩이 끝난 날이 속한 급여에 지급이 됩니다.</li>
+                        <li>이번 달에는 유찬님을 추천해주신 해주님에게 지급되었습니다.</li>
+                        <li>사내 추천은 항상 진행 중이에요! 특히 2월말까지 하이패스 추천이 진행가능하니, 구성원분들의 많은 추천 부탁드려요.</li>
+                      </ul>
+                      <p><strong>[연말정산]</strong></p>
+                      <ul>
+                        <li>연말정산 진행 분이 1월 급여에 선반영되었습니다.</li>
+                        <li>일부 수정 사항이 있는 경우 2월 급여에 반영 예정입니다.</li>
+                        <li>분납 신청을 해주신 경우, 1회차는 1월 급여, 2회차는 3월 급여, 3회차는 4월 급여에 반영 예정입니다. (2회차, 3회차 반영월 오타 아닙니다.)</li>
+                      </ul>
+                    </div>
+                    <div class="notice-attach">
+                      <div class="notice-attach__head">
+                        <span>3개 첨부파일</span>
+                        <svg class="ico ico-xs"><use href="#i-chevron-down"/></svg>
+                      </div>
+                      <div class="notice-attach__list">
+                        <div class="notice-attach__file">
+                          <span class="notice-attach__thumb notice-attach__thumb--img">PNG</span>
+                          <div class="notice-attach__info">
+                            <div class="notice-attach__name">스크린샷 2024-…png</div>
+                            <div class="notice-attach__size">37.4 MB</div>
+                          </div>
+                        </div>
+                        <div class="notice-attach__file">
+                          <span class="notice-attach__thumb notice-attach__thumb--pdf">PDF</span>
+                          <div class="notice-attach__info">
+                            <div class="notice-attach__name">Quality in Softwar…pdf</div>
+                            <div class="notice-attach__size">37.4 MB</div>
+                          </div>
+                        </div>
+                        <div class="notice-attach__file">
+                          <span class="notice-attach__thumb notice-attach__thumb--xlsx">XLSX</span>
+                          <div class="notice-attach__info">
+                            <div class="notice-attach__name">Recently Contac…xlsx</div>
+                            <div class="notice-attach__size">37.4 MB</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="notice-reactions">
+                      <button class="notice-reaction notice-reaction--active"><span>👍</span><span class="notice-reaction__count">23</span></button>
+                      <button class="notice-reaction notice-reaction--add" title="반응 추가" aria-label="반응 추가"><span>🙂</span></button>
+                    </div>
+                    <div class="notice-comments">
+                      <div class="notice-comments__head">댓글</div>
+                      <div class="notice-comments__empty">
+                        <span class="notice-comments__empty-icon">🙂</span>
+                        <span>첫 번째로 댓글을 남겨보세요!</span>
+                      </div>
+                      <div class="notice-comments__input">
+                        <input type="text" placeholder="댓글 남기기..." />
+                        <button class="notice-comments__send" aria-label="전송"><svg class="ico"><use href="#i-send"/></svg></button>
+                      </div>
+                    </div>
+                  </article>
+                </div>
               </div>
               <!-- Goals view 테이블 (제목 / 담당 주체 / 참여 멤버 / 사이클) -->
               <div class="pm-table-wrap" data-view="goals">
@@ -1909,6 +2480,7 @@
   const NAV_MIN = 180, NAV_MAX = 260;
   const SIDE_MIN = 180, SIDE_MAX = 360;
   const SHEET_MIN = 500, SHEET_MAX = 900;
+  const MAIN_RESERVE = 220;  // sheet 사이즈 변경 시 main 영역 최소 확보 폭
   // aside effective clamp (뷰포트 의존 없이 drag 범위만 enforce)
   const clampSide = (userW) => Math.max(SIDE_MIN, Math.min(SIDE_MAX, userW));
 
@@ -2098,12 +2670,13 @@
     body.classList.toggle('header-lnb', state.headerMode === 'lnb');
     body.classList.toggle('local-view-goals', state.localView === 'goals');
     body.classList.toggle('local-view-knowledge', state.localView === 'knowledge');
+    body.classList.toggle('local-view-notice', state.localView === 'notice');
     body.classList.toggle('gnb-goals-expanded', !!state.gnbGoalsExpanded);
 
-    // sheet 가 열려있고 사이드바가 펼쳐져 있을 때 main 100 확보 — sheet width 자동 축소
+    // sheet 가 열려있고 사이드바가 펼쳐져 있을 때 main MAIN_RESERVE 확보 — sheet width 자동 축소
     // (드래그로 사이드바 자동 접힘 후 사용자가 수동 펼치면 시트가 cap 까지 줄어듦)
     if (state.sheetOpen) {
-      const sheetCap = innerWidth - navContribution - localContribution - 100;
+      const sheetCap = innerWidth - navContribution - localContribution - MAIN_RESERVE;
       if (sheetCap >= SHEET_MIN && state.sheetWidth > sheetCap) {
         state.sheetWidth = sheetCap;
       }
@@ -2112,7 +2685,7 @@
     // sheet takeover: 뷰포트가 desired sheet 폭보다 좁으면 전체 뷰포트 덮음 (Notion peek 방식)
     // Sheet takeover 정책 — 두 모드 분리
     //   AUTO   : ① state.sheetWidth >= innerWidth  OR
-    //            ② innerWidth - 100 < SHEET_MIN  OR
+    //            ② innerWidth - MAIN_RESERVE < SHEET_MIN  OR
     //            ③ 사이드바 + sheet 가 겹쳐서 layout 깨지는 경우 (시각적 overlap 방어)
     //            → vw 가 작아서 강제 풀 vw 덮음 (globalSidebar 포함)
     //   MANUAL : state.sheetExpanded === true   → 사용자 expand 클릭, globalSidebar 제외 영역
@@ -2120,7 +2693,7 @@
     const sheetVsSidebarsOverlap = (innerWidth - state.sheetWidth) < (navContribution + localContribution);
     const sheetTakeoverAuto = state.sheetOpen && (
       state.sheetWidth >= innerWidth ||
-      innerWidth - 100 < SHEET_MIN ||
+      innerWidth - MAIN_RESERVE < SHEET_MIN ||
       sheetVsSidebarsOverlap
     );
     const sheetTakeoverManual = state.sheetOpen && state.sheetExpanded && !sheetTakeoverAuto;
@@ -2177,11 +2750,13 @@
       const wMain = document.getElementById('w-main');
       const wMainBc = document.getElementById('w-main-bc');
       const wMainBcGoals = document.getElementById('w-main-bc-goals');
+      const wMainBcNotice = document.getElementById('w-main-bc-notice');
       if (main) {
         const px = Math.round(main.getBoundingClientRect().width);
         if (wMain) wMain.textContent = px;
         if (wMainBc) wMainBc.textContent = px;
         if (wMainBcGoals) wMainBcGoals.textContent = px;
+        if (wMainBcNotice) wMainBcNotice.textContent = px;
       }
     });
 
@@ -2405,6 +2980,7 @@
   const gnbToView = (key) => {
     if (key === 'goals-all') return 'goals';
     if (key === 'knowledge-docs') return 'knowledge';
+    if (key === 'notice') return 'notice';
     return null;
   };
   const syncGnbActive = (key) => {
@@ -2423,6 +2999,8 @@
       const targetView = gnbToView(key);
       if (targetView) {
         state.localView = targetView;
+        // notice 진입 시 localSidebar 폭을 max 로 자동 확장
+        if (targetView === 'notice') state.localWidth = SIDE_MAX;
         syncGnbActive(key);
         apply();
       }
@@ -2430,6 +3008,7 @@
   });
   // 초기 active 동기화
   if (state.localView === 'goals') syncGnbActive('goals-all');
+  else if (state.localView === 'notice') syncGnbActive('notice');
   else syncGnbActive('knowledge-docs');
 
   // ─── parent(index.html)로부터 toggle 명령 수신 ───
@@ -2589,11 +3168,11 @@
 
   // ─── Sheet resize (좌측 엣지 — drag left = expand) ───
   // 정책:
-  //   - main 이 항상 100 이상 보이도록 sheet max 동적 계산
-  //   - 시트 키울 때: main < 100 → cascade fold (local → global)
+  //   - main 이 항상 MAIN_RESERVE 이상 보이도록 sheet max 동적 계산
+  //   - 시트 키울 때: main < MAIN_RESERVE → cascade fold (local → global)
   //   - 시트 줄일 때: drag 로 접힌 사이드는 cascade unfold (global → local) — 사용자 의도 복원
   //   - 전체화면(takeover) 모드일 때 drag 비활성 — CSS 로 resizer hide + JS 가드
-  //   - 모두 접힌 후엔 max = innerWidth - 100
+  //   - 모두 접힌 후엔 max = innerWidth - MAIN_RESERVE
   const sheetRes = document.getElementById('sheet-resizer');
   // takeover 시점에 drag 시작 차단 (capture phase 로 attachDrag 의 pointerdown 보다 먼저 가로채기)
   sheetRes.addEventListener('pointerdown', (e) => {
@@ -2616,7 +3195,7 @@
       const computeCap = () => {
         const nav = isFolded() ? 0 : navFullW;
         const loc = (state.localUsed && state.localSidebarOpen) ? localFullW : 0;
-        return innerWidth - nav - loc - 100;
+        return innerWidth - nav - loc - MAIN_RESERVE;
       };
 
       // 키움 → cascade fold (local → global)
@@ -2636,7 +3215,7 @@
       // global 부터 펼침 시도: global 펼친 후의 cap 이 w 보다 크면 펼쳐도 OK
       if (sheetDragFoldedGlobal && isFolded()) {
         const loc = (state.localUsed && state.localSidebarOpen) ? localFullW : 0;
-        const capIfGlobalUnfolded = innerWidth - navFullW - loc - 100;
+        const capIfGlobalUnfolded = innerWidth - navFullW - loc - MAIN_RESERVE;
         if (w <= capIfGlobalUnfolded) {
           state.cookiePref = 'unfolded';
           writeCookie('unfolded');
@@ -2646,7 +3225,7 @@
       }
       if (sheetDragFoldedLocal && state.localUsed && !state.localSidebarOpen) {
         const nav = isFolded() ? 0 : navFullW;
-        const capIfLocalUnfolded = innerWidth - nav - localFullW - 100;
+        const capIfLocalUnfolded = innerWidth - nav - localFullW - MAIN_RESERVE;
         if (w <= capIfLocalUnfolded) {
           state.localSidebarOpen = true;
           sheetDragFoldedLocal = false;
