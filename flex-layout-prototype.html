@@ -2912,6 +2912,10 @@
 
     // Broadcast state to parent (index.html의 control에서 active 반영)
     try {
+      // compute some numeric widths to share with parent (index.html)
+      const mainEl = document.getElementById('page-main');
+      const mainWidth = mainEl ? Math.round(mainEl.getBoundingClientRect().width) : null;
+      const navbarWidth = Math.round(state.navbarWidth || 0);
       window.parent.postMessage({
         type: 'fx-state',
         folded,
@@ -2921,6 +2925,16 @@
         endUsed: state.endUsed,
         sheetOpen: state.sheetOpen,
         headerMode: state.headerMode,
+        // sizes (px)
+        navbarWidth: navbarWidth,
+        floatingWidth: state.floatingShown ? Math.round(state.floatingWidth || 0) : null,
+        localWidth: Math.round(state.localWidth || 0),
+        localEff: Math.round(localEff || 0),
+        endWidth: Math.round(state.endWidth || 0),
+        endEff: Math.round(endEff || 0),
+        sheetWidth: Math.round(state.sheetWidth || 0),
+        sheetEff: Math.round(sheetEff || 0),
+        mainWidth: mainWidth,
       }, '*');
     } catch(e) {}
 
