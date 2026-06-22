@@ -9,7 +9,7 @@
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif; }
   body {
     display: grid;
-    grid-template-rows: 40px 1fr;
+    grid-template-rows: 1fr 40px;
     grid-template-columns: minmax(0, 1fr);
     background: #111;
   }
@@ -20,7 +20,7 @@
     display: flex;
     align-items: stretch;
     background: #111;
-    border-bottom: 1px solid #2a2a2a;
+    border-top: 1px solid #2a2a2a;
     padding-left: 12px;
     gap: 2px;
   }
@@ -90,6 +90,11 @@
     background: #2383e2;
     color: #fff;
   }
+  /* startAside off → 타입 선택 비활성 */
+  .flex-controls .segmented.disabled {
+    opacity: .35;
+    pointer-events: none;
+  }
 
   .frame-wrap {
     position: relative;
@@ -109,6 +114,13 @@
 </head>
 <body>
 
+<div class="frame-wrap">
+  <iframe id="frame-flex"   class="active" src="flex-layout-prototype.html"></iframe>
+  <iframe id="frame-slack"              src="slack-layout-prototype.html"></iframe>
+  <iframe id="frame-notion"             src="notion-layout-prototype.html"></iframe>
+  <iframe id="frame-linear"             src="linear-layout-prototype.html"></iframe>
+</div>
+
 <nav class="tabs">
   <button class="tab-btn active" data-target="flex">flex</button>
   <button class="tab-btn" data-target="slack">Slack</button>
@@ -116,19 +128,16 @@
   <button class="tab-btn" data-target="linear">Linear</button>
   <span class="spacer"></span>
   <span class="flex-controls" id="flex-controls">
-    <button data-fx="local" class="active">localSidebar</button>
+    <button data-fx="startaside" class="active">startAside</button>
+    <span class="segmented" id="seg-startaside">
+      <button data-fx="header-lnb" class="active">사이드바</button>
+      <button data-fx="header-start">패널</button>
+    </span>
     <button data-fx="end" class="active">endPanel</button>
     <button data-fx="sheet">Sheet</button>
   </span>
   <span class="label">layout prototype</span>
 </nav>
-
-<div class="frame-wrap">
-  <iframe id="frame-flex"   class="active" src="flex-layout-prototype.html"></iframe>
-  <iframe id="frame-slack"              src="slack-layout-prototype.html"></iframe>
-  <iframe id="frame-notion"             src="notion-layout-prototype.html"></iframe>
-  <iframe id="frame-linear"             src="linear-layout-prototype.html"></iframe>
-</div>
 
 <script>
   const buttons = document.querySelectorAll('.tab-btn');
@@ -169,18 +178,22 @@
     });
   });
   // flex iframe 에서 state 수신 → 버튼 active 동기화
-  // localSidebar / endPanel 은 옵션 (사용/미사용) — localUsed / endUsed 기반
+  // secondarySidebar / endPanel 은 옵션 (사용/미사용) — secondaryUsed / endUsed 기반
   window.addEventListener('message', (e) => {
     if (!e.data || e.data.type !== 'fx-state') return;
     const s = e.data;
     document.querySelectorAll('#flex-controls button').forEach(b => {
       const key = b.dataset.fx;
       const active =
-        (key === 'local' && s.localUsed) ||
+        (key === 'startaside' && s.startAsideUsed) ||
+        (key === 'header-lnb'   && s.headerMode === 'lnb') ||
+        (key === 'header-start' && s.headerMode === 'start') ||
         (key === 'end'   && s.endUsed) ||
         (key === 'sheet' && s.sheetOpen);
       b.classList.toggle('active', !!active);
     });
+    // startAside 가 off 면 하위 타입(사이드바/패널) 선택은 비활성
+    document.getElementById('seg-startaside').classList.toggle('disabled', !s.startAsideUsed);
   });
 </script>
 </body>

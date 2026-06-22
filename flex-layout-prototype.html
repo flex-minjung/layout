@@ -6,17 +6,18 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
   :root {
-    --navbar: 220px;
-    --navbar-min: 180px;
-    --navbar-max: 260px;
-    --navbar-folded: 46px;      /* folded 시 세로 고정 버튼 영역 */
-    --floating-navbar-w: 220px; /* floating 기본 폭 (resize 가능, min 180 max 260) */
+    --primary-sidebar: 220px;
+    --primary-sidebar-min: 180px;
+    --primary-sidebar-max: 300px;
+    --primary-sidebar-folded: 46px;      /* folded 시 세로 고정 버튼 영역 */
+    --floating-primary-sidebar-w: 220px; /* floating 기본 폭 (resize 가능, min 180 max 300) */
 
     --page-header: 46px;
-    --local-sidebar: 220px;       /* min 180 / default 220 / max 360 */
-    --end-panel: 260px;
+    --secondary-sidebar: 220px;       /* min 180 / default 220 / max 300 */
+    --secondary-sidebar-max: 300px;
+    --end-panel: 220px;
     --side-min: 180px;
-    --side-max: 360px;
+    --side-max: 360px;                /* endPanel max */
     --sheet: 680px;
     --fold-break: 1280;
 
@@ -40,7 +41,7 @@
   }
 
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif; color: var(--text); overflow: hidden; background: var(--bg-page); font-size: 13px; }
+  html, body { margin: 0; padding: 0; height: 100%; font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif; color: var(--text); overflow: hidden; background: var(--bg-page); font-size: 14px; }
 
   /* ─── 바깥 프레임 ─── */
   .app-root {
@@ -89,12 +90,12 @@
     overflow: hidden;
   }
 
-  /* ─── AppNavBar (globalSidebar) ─── */
-  .app-navbar {
+  /* ─── PrimarySidebar (primarySidebar) ─── */
+  .primary-sidebar {
     position: relative;
-    width: var(--navbar);
-    min-width: var(--navbar-min);
-    max-width: var(--navbar-max);
+    width: var(--primary-sidebar);
+    min-width: var(--primary-sidebar-min);
+    max-width: var(--primary-sidebar-max);
     background: #f6f6f6;
     border-right: 0;
     box-shadow: inset -1px 0 0 rgba(0,0,0,.08);
@@ -103,27 +104,30 @@
     flex-direction: column;
     transition: width 180ms ease, min-width 180ms ease, max-width 180ms ease;
   }
-  body.navbar-dragging .app-navbar { transition: none; }
-  .app-navbar__header {
+  body.primary-sidebar-dragging .primary-sidebar { transition: none; }
+  .primary-sidebar__header {
     height: 46px;
-    padding: 7px 8px 7px 12px;
+    padding: 0 12px;
     display: flex;
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
   }
-  .app-navbar__thumb {
+  .primary-sidebar__thumb {
     width: 22px;
     height: 22px;
     border-radius: 5px;
     background: linear-gradient(135deg, #4ade80, #16a34a);
     flex-shrink: 0;
   }
-  .app-navbar__title {
-    flex: 1;
-    font-size: 13px;
+  .primary-sidebar__title {
+    max-width: 100%;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: 8px;
+    font-size: 14px;
     font-weight: 500;
-    letter-spacing: -0.1px;
+    letter-spacing: 0;
     color: var(--text);
     white-space: nowrap;
     overflow: hidden;
@@ -132,15 +136,18 @@
     align-items: center;
     gap: 4px;
     min-width: 0;
+    cursor: pointer;
+    transition: background 120ms;
   }
-  .app-navbar__title-arrow {
+  .primary-sidebar__title:hover { background: rgba(0,0,0,.04); }
+  .primary-sidebar__title-arrow {
     width: 10px;
     height: 10px;
     color: var(--text-weak);
     fill: currentColor;
     flex-shrink: 0;
   }
-  .app-navbar__title .size {
+  .primary-sidebar__title .size {
     margin-left: 6px;
     font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
     font-size: 10px;
@@ -149,8 +156,9 @@
     vertical-align: middle;
   }
   .fold-btn {
-    width: 32px; height: 32px;
-    border-radius: 6px;
+    margin-left: auto;
+    width: 28px; height: 28px;
+    border-radius: 8px;
     border: 1px solid transparent;
     background: transparent;
     cursor: pointer;
@@ -174,9 +182,9 @@
   }
   .ico-fx { fill: currentColor; stroke: none; } /* alias for backwards compat */
   .ico-flip-x { transform: scaleX(-1); }
-  .app-navbar__body {
+  .primary-sidebar__body {
     flex: 1; min-height: 0;
-    padding: 6px 8px 12px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 1px;
@@ -186,18 +194,21 @@
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    border-radius: 6px;
+    gap: 6px;
+    height: 28px;
+    min-height: 28px;
+    flex-shrink: 0;
+    padding: 0 6px;
+    border-radius: 8px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
     user-select: none;
     transition: background 120ms;
     min-width: 0;
   }
   .nav-item:hover { background: rgba(0,0,0,.045); }
-  .nav-item.active { background: rgba(0,0,0,.07); font-weight: 500; }
+  .nav-item.active { background: rgba(0,0,0,.07); }
   .nav-item .ico {
     flex-shrink: 0;
     color: var(--text-weak);
@@ -252,8 +263,8 @@
   }
   /* 섹션 헤더 */
   .nav-section__header {
-    padding: 14px 10px 4px;
-    font-size: 11px;
+    padding: 14px 6px 2px;
+    font-size: 12px;
     color: var(--text-dim);
     font-weight: 500;
     letter-spacing: 0;
@@ -267,16 +278,16 @@
   .nav-item--size .nav-item__label {
     font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif;
   }
-  /* 들여쓰기된 sub-item (그룹 메뉴 하위) — 부모 텍스트와 좌측 정렬 (icon 16 + gap 8 + padding 8 = 32) */
+  /* 들여쓰기된 sub-item (그룹 메뉴 하위) — 부모 텍스트와 좌측 정렬 (padding 6 + icon 16 + gap 6 = 28) */
   .nav-item.nav-item--sub {
-    padding-left: 32px;
+    padding-left: 28px;
   }
   .nav-item.nav-item--sub .ico { display: none; }
   /* 그룹 메뉴 우측 chevron — 텍스트와 가까이, 작게 */
   .nav-item__expand {
     width: 12px; height: 12px;
     flex-shrink: 0;
-    color: var(--text-dim);
+    color: var(--text-weak);
     fill: currentColor;
     stroke: none;
     pointer-events: none;
@@ -286,16 +297,24 @@
   body:not(.gnb-goals-expanded) .gnb-goals-sub { display: none; }
   body.gnb-goals-expanded [data-gnb="goals-parent"] .expand-collapsed,
   body:not(.gnb-goals-expanded) [data-gnb="goals-parent"] .expand-expanded { display: none; }
+  /* 전자결제(contract) 메뉴 토글 */
+  body:not(.gnb-contract-expanded) .gnb-contract-sub { display: none; }
+  body.gnb-contract-expanded [data-gnb="contract-parent"] .expand-collapsed,
+  body:not(.gnb-contract-expanded) [data-gnb="contract-parent"] .expand-expanded { display: none; }
+  /* 지식 관리(knowledge) 메뉴 토글 */
+  body:not(.gnb-knowledge-expanded) .gnb-knowledge-sub { display: none; }
+  body.gnb-knowledge-expanded [data-gnb="knowledge-parent"] .expand-collapsed,
+  body:not(.gnb-knowledge-expanded) [data-gnb="knowledge-parent"] .expand-expanded { display: none; }
 
   /* Resize area (unfolded) */
-  .navbar-resizer {
+  .primary-sidebar-resizer {
     position: absolute;
     right: -4px; top: 0; bottom: 0;
     width: 8px;
     cursor: col-resize;
     z-index: 10;
   }
-  .navbar-resizer::after {
+  .primary-sidebar-resizer::after {
     content: "";
     position: absolute;
     right: 3px; top: 0; bottom: 0;
@@ -304,10 +323,10 @@
     border-radius: 1px;
     transition: background 120ms;
   }
-  .navbar-resizer:hover::after,
-  .navbar-resizer.dragging::after { background: #aaa; }
+  .primary-sidebar-resizer:hover::after,
+  .primary-sidebar-resizer.dragging::after { background: #aaa; }
 
-  /* ─── PageRoot — flex row: localSidebar | page-right (header + body) ─── */
+  /* ─── PageRoot — flex row: secondarySidebar | page-right (header + body) ─── */
   .page-root {
     flex: 1; min-width: 0;
     display: flex;
@@ -322,7 +341,7 @@
   .page-header {
     height: var(--page-header);
     border-bottom: 1px solid var(--border-secondary);
-    padding: 7px 12px 7px 20px;
+    padding: 0 12px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -331,18 +350,21 @@
     background: #fff;
     box-sizing: border-box;
   }
+  /* PageTitlebar 스펙(12599-58391): 타이틀 14px Medium #2c2c2c, 좌측 6px(pl2+px2+px2) / 우측 10px(pr6+px2+px2) 인셋 */
   .page-header__title {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
-    letter-spacing: -0.1px;
+    letter-spacing: 0;
     font-weight: 500;
+    line-height: 20px;
+    padding: 0 10px 0 6px;
   }
-  /* Breadcrumb (globalSidebar+localSidebar 모두 펼침 상태에서 page-header 에 표시) */
+  /* Breadcrumb (primarySidebar+secondarySidebar 모두 펼침 상태에서 page-header 에 표시) */
   .page-header__breadcrumb {
     display: none;
     align-items: center;
     gap: 0;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
     letter-spacing: -0.1px;
     min-width: 0;
@@ -380,7 +402,7 @@
   }
   .breadcrumb-size {
     margin-left: 4px;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
     font-weight: 500;
     letter-spacing: -0.1px;
@@ -388,7 +410,7 @@
     flex-shrink: 0;
   }
   /* 가로 스크롤로 page-header 가 max-content 폭 확보 → 별도 hide 미디어쿼리 불필요 */
-  /* localSidebar 모드 + LNB 접힘: page-header 좌측에 reopen 토글 표시 */
+  /* secondarySidebar 모드 + LNB 접힘: page-header 좌측에 reopen 토글 표시 */
   .page-header__lnb-reopen {
     display: none;
     position: relative;
@@ -404,71 +426,52 @@
     transition: background 120ms, color 120ms;
   }
   .page-header__lnb-reopen:hover { background: rgba(0,0,0,.05); color: var(--text); }
-  body.header-lnb.no-local-sidebar .page-header__lnb-reopen,
-  body.header-lnb.local-auto-folded .page-header__lnb-reopen,
+  body.header-lnb.no-secondary-sidebar .page-header__lnb-reopen,
+  body.header-lnb.secondary-auto-folded .page-header__lnb-reopen,
   body.header-lnb.asides-hidden .page-header__lnb-reopen {
     display: grid;
   }
-  /* localSidebar 미사용(local-disabled) 시 reopen 버튼 모두 숨김 — fold 가 아니라 옵션 off */
-  body.local-disabled .page-header__lnb-reopen,
-  body.local-disabled .side-reopen.local { display: none !important; }
+  /* secondarySidebar 미사용(secondary-disabled) 시 reopen 버튼 모두 숨김 — fold 가 아니라 옵션 off */
+  body.secondary-disabled .page-header__lnb-reopen,
+  body.secondary-disabled .side-reopen.secondary { display: none !important; }
   body.end-disabled .side-reopen.end { display: none !important; }
-  body.local-disabled .local-sidebar { display: none; }
-  body.end-disabled .end-panel { display: none; }
+  body.secondary-disabled .secondary-sidebar { width: 0; min-width: 0; max-width: 0; overflow: hidden; border-width: 0; }
+  body.end-disabled .end-panel { width: 0; min-width: 0; max-width: 0; overflow: hidden; border-width: 0; }
 
-  body.header-lnb.no-local-sidebar:not(.local-disabled) .page-header,
-  body.header-lnb.local-auto-folded:not(.local-disabled) .page-header,
-  body.header-lnb.asides-hidden:not(.local-disabled) .page-header { padding-left: 8px; }
+  body.header-lnb.no-secondary-sidebar:not(.secondary-disabled) .page-header,
+  body.header-lnb.secondary-auto-folded:not(.secondary-disabled) .page-header,
+  body.header-lnb.asides-hidden:not(.secondary-disabled) .page-header { padding-left: 8px; }
   /* GNB 접힘 + LNB 미사용 → fold-btn(7,7~39,39) 클리어 */
-  body.folded.local-disabled .page-header { padding-left: 48px; }
-  /* localSidebar 모드일 때 PageMain 의 side-reopen.local 는 숨김 (page-header 의 새 버튼으로 대체) */
-  body.header-lnb .side-reopen.local { display: none !important; }
+  body.folded.secondary-disabled .page-header { padding-left: 41px; }
+  /* secondarySidebar 모드일 때 PageMain 의 side-reopen.secondary 는 숨김 (page-header 의 새 버튼으로 대체) */
+  body.header-lnb .side-reopen.secondary { display: none !important; }
 
-  /* localSidebar 모드 → 항상 브레드크럼 표시 (LNB 펼침/접힘/사라짐 모두) */
-  body.header-lnb .page-header > .page-header__title { display: none; }
-  body.header-lnb .page-header__breadcrumb[data-view="knowledge"] { display: inline-flex; }
-  body.header-lnb.local-view-goals .page-header__breadcrumb[data-view="knowledge"] { display: none; }
-  body.header-lnb.local-view-goals .page-header__breadcrumb[data-view="goals"] { display: inline-flex; }
-  body.header-lnb.local-view-notice .page-header__breadcrumb[data-view="knowledge"],
-  body.header-lnb.local-view-notice .page-header__breadcrumb[data-view="goals"] { display: none; }
-  body.header-lnb.local-view-notice .page-header__breadcrumb[data-view="notice"] { display: inline-flex; }
+  /* StartAside(secondarySidebar/startPanel) 트리거 아이콘 — 양 모드 공통: ≪ collapse · bulletlist reopen (Figma spec) */
+  /* 패널 모드: StartPanel 접힘 → 페이지 타이틀바 좌측에 bulletlist reopen 노출 (플로팅 엣지 버튼 대체) */
+  body:not(.header-lnb).no-secondary-sidebar:not(.secondary-disabled) .page-header__lnb-reopen,
+  body:not(.header-lnb).secondary-auto-folded:not(.secondary-disabled) .page-header__lnb-reopen,
+  body:not(.header-lnb).asides-hidden:not(.secondary-disabled) .page-header__lnb-reopen { display: grid; }
+  body:not(.header-lnb) .side-reopen.secondary { display: none !important; }
+  /* 패널 모드 타이틀바 간격 — Figma StartPanel spec (좌우 12px, 트리거↔타이틀 2px, collapse 우측 12px) */
+  body:not(.header-lnb) .page-header { padding-left: 12px; }
+  body:not(.header-lnb) .secondary-sidebar .side-toggle { right: 12px; }
+  body:not(.header-lnb).no-secondary-sidebar .page-header__lnb-reopen,
+  body:not(.header-lnb).secondary-auto-folded .page-header__lnb-reopen,
+  body:not(.header-lnb).asides-hidden .page-header__lnb-reopen { margin-right: -6px; }
 
-  /* GNB+LNB 모두 접힘 상태: 첫번째(menu) 와 두번째(panel-left) 아이콘 사이 구분선 */
-  body.folded.header-lnb.no-local-sidebar .page-header__lnb-reopen::before,
-  body.folded.header-lnb.local-auto-folded .page-header__lnb-reopen::before,
-  body.folded.header-lnb.asides-hidden .page-header__lnb-reopen::before,
-  body.folded.header-lnb.narrow .page-header__lnb-reopen::before {
-    content: '';
-    position: absolute;
-    left: -5px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 1px;
-    height: 14px;
-    background: rgba(0,0,0,.1);
-  }
-  /* LNB 접힘 상태: panel-left 버튼과 브레드크럼 사이 구분선 (GNB 여부 무관) */
-  body.header-lnb.no-local-sidebar .page-header__lnb-reopen::after,
-  body.header-lnb.local-auto-folded .page-header__lnb-reopen::after,
-  body.header-lnb.asides-hidden .page-header__lnb-reopen::after,
-  body.header-lnb.narrow .page-header__lnb-reopen::after {
-    content: '';
-    position: absolute;
-    right: -5px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 1px;
-    height: 14px;
-    background: rgba(0,0,0,.1);
-  }
-  /* divider 우측 여백을 좀 더 확보 — 버튼에 margin-right 추가 (구분선은 버튼 우측 -5px 고정) */
-  body.header-lnb.no-local-sidebar .page-header__lnb-reopen,
-  body.header-lnb.local-auto-folded .page-header__lnb-reopen,
+  /* secondarySidebar 모드 → 단일 타이틀 표시 (breadcrumb 제거) */
+  body.header-lnb .page-header > .page-header__title { display: inline-flex; }
+  body.header-lnb .page-header__breadcrumb { display: none !important; }
+
+  /* 트리거 아이콘 사이/뒤 구분선 제거 + 간격 2px — Figma 스펙 (라인 없음) */
+  body.header-lnb.no-secondary-sidebar .page-header__lnb-reopen,
+  body.header-lnb.secondary-auto-folded .page-header__lnb-reopen,
   body.header-lnb.asides-hidden .page-header__lnb-reopen,
-  body.header-lnb.narrow .page-header__lnb-reopen { margin-right: 6px; }
-  /* local-disabled 상태에서는 두번째 아이콘 자체가 없으므로 divider 숨김 */
-  body.local-disabled .page-header__lnb-reopen::before,
-  body.local-disabled .page-header__lnb-reopen::after { display: none; }
+  body.header-lnb.narrow .page-header__lnb-reopen { margin-right: -6px; }
+  /* 타이틀바 트리거 아이콘 컬러 — fx DS #535353 (스펙) */
+  #btn-fold, #btn-fold-floating,
+  .page-header__lnb-reopen,
+  .page-header__end-toggle { color: #535353; }
   .page-header__toggle {
     width: 28px; height: 28px;
     border-radius: 5px;
@@ -485,12 +488,12 @@
   /* page-header 우측 endPanel 토글 (Figma endWrapper 위치) */
   .page-header__end-toggle {
     margin-left: auto;
-    width: 32px; height: 32px;
+    width: 28px; height: 28px;
     border: 0;
     background: transparent;
     border-radius: 5px;
     cursor: pointer;
-    color: var(--text-weak);
+    color: #535353;
     display: none;
     place-items: center;
     padding: 0;
@@ -498,13 +501,13 @@
     transition: background 120ms, color 120ms;
   }
   .page-header__end-toggle:hover { background: rgba(0,0,0,.05); color: var(--text); }
-  /* lnb 모드 + endPanel 사용중 → page-header 우측 끝에 토글 노출 */
-  body.header-lnb:not(.end-disabled) .page-header__end-toggle { display: grid; }
-  /* lnb 모드: PageMain 엣지의 side-reopen.end 와 endPanel 내부 side-toggle 은 숨김 (page-header 토글로 대체) */
-  body.header-lnb .side-reopen.end { display: none !important; }
-  body.header-lnb .end-panel .side-toggle { display: none; }
+  /* endPanel 접힘 → page-header 우측 끝에 reopen 토글 노출 (양 모드 공통, Figma EndPanel spec) */
+  body.no-end-panel:not(.end-disabled) .page-header__end-toggle,
+  body.asides-hidden:not(.end-disabled) .page-header__end-toggle { display: grid; }
+  /* endPanel reopen 은 page-header 우측 토글로 통일 → PageMain 엣지 floating reopen 은 양 모드 모두 숨김 */
+  body .side-reopen.end { display: none !important; }
 
-  /* Start 모드(기본): page-header 가 절대위치로 전체 폭 (localSidebar 위까지 덮음) */
+  /* Start 모드(기본): page-header 가 절대위치로 전체 폭 (secondarySidebar 위까지 덮음) */
   body:not(.header-lnb) .page-header {
     position: absolute;
     top: 0; left: 0; right: 0;
@@ -512,20 +515,20 @@
     z-index: 2;
   }
   body:not(.header-lnb) .page-right,
-  body:not(.header-lnb) .local-sidebar {
+  body:not(.header-lnb) .secondary-sidebar {
     padding-top: var(--page-header);
   }
-  body:not(.header-lnb) .local-sidebar .side-toggle {
+  body:not(.header-lnb) .secondary-sidebar .side-toggle {
     top: calc(var(--page-header) + 8px);
   }
-  /* AppNavBar 접힘 시 fold 버튼(32x32 @ 7,7)이 page-header 좌측과 겹치는 경우 타이틀 영역을 밀어줌
+  /* PrimarySidebar 접힘 시 fold 버튼(32x32 @ 7,7)이 page-header 좌측과 겹치는 경우 타이틀 영역을 밀어줌
      - panel 모드: page-header 가 절대위치로 전체 폭이므로 항상 fold 버튼과 겹침
-     - localSidebar 모드: localSidebar 가 숨겨져 page-right 가 좌측 끝부터 시작할 때 겹침 */
+     - secondarySidebar 모드: secondarySidebar 가 숨겨져 page-right 가 좌측 끝부터 시작할 때 겹침 */
   body.folded:not(.header-lnb) .page-header,
-  body.folded.header-lnb.no-local-sidebar .page-header,
-  body.folded.header-lnb.local-auto-folded .page-header,
-  body.folded.header-lnb.asides-hidden .page-header { padding-left: 48px; }
-  /* localSidebar 모드: page-header 는 page-right 안의 자연스러운 flex child (localSidebar 옆) */
+  body.folded.header-lnb.no-secondary-sidebar .page-header,
+  body.folded.header-lnb.secondary-auto-folded .page-header,
+  body.folded.header-lnb.asides-hidden .page-header { padding-left: 41px; }
+  /* secondarySidebar 모드: page-header 는 page-right 안의 자연스러운 flex child (secondarySidebar 옆) */
   /* Aside 접기 버튼 — 각 aside 내부 PageMain 쪽 상단 모서리 */
   .side-toggle {
     position: absolute;
@@ -535,17 +538,23 @@
     background: transparent;
     border-radius: 5px;
     cursor: pointer;
-    color: var(--text-weak);
+    color: #535353;
     display: grid; place-items: center;
     padding: 0;
     z-index: 5;
     transition: background 120ms, color 120ms;
   }
   .side-toggle:hover { background: rgba(0,0,0,.05); color: var(--text); }
-  /* localSidebar 안: 우측 상단 (PageMain 쪽 엣지) */
-  .local-sidebar .side-toggle { right: 8px; }
-  /* endPanel 안: 좌측 상단 (PageMain 쪽 엣지) */
-  .end-panel .side-toggle { left: 8px; }
+  /* secondarySidebar 안: 우측 상단 (PageMain 쪽 엣지) */
+  .secondary-sidebar .side-toggle { right: 8px; }
+  /* collapse 시 ≪ 가 메뉴 위로 이동하며 겹치지 않도록 — 우측(right) 고정 대신 펼침폭 기준 left 고정.
+     접힐 때 패널 width 는 0 이 되지만 --secondary-sidebar 는 유지되므로 버튼이 제자리에서 가장자리에 클립됨 */
+  body.header-lnb .secondary-sidebar .side-toggle { right: auto; left: calc(var(--secondary-sidebar) - 36px); }
+  /* endPanel 안: 우측 상단 (window 쪽 엣지) — Figma EndPanel collapseButton 위치 */
+  .end-panel .side-toggle { right: 12px; }
+  /* StartPanel(패널 모드)·EndPanel 은 드래그로만 접힘 → 접기 버튼 숨김 (세컨더리 사이드바 모드의 ≪ 는 유지) */
+  body:not(.header-lnb) #btn-secondary-toggle { display: none; }
+  #btn-end-toggle { display: none; }
 
   /* Aside 펼치기 버튼 — aside 가 숨겨졌을 때 PageMain 의 해당 방향 엣지에 노출 */
   .side-reopen {
@@ -556,7 +565,7 @@
     background: transparent;
     border-radius: 5px;
     cursor: pointer;
-    color: var(--text-weak);
+    color: #535353;
     display: none;
     place-items: center;
     padding: 0;
@@ -564,11 +573,11 @@
     transition: background 120ms, color 120ms;
   }
   .side-reopen:hover { background: rgba(0,0,0,.05); color: var(--text); }
-  .side-reopen.local { left: 8px; }
+  .side-reopen.secondary { left: 8px; }
   .side-reopen.end { right: 8px; }
-  body.no-local-sidebar .side-reopen.local,
-  body.local-auto-folded .side-reopen.local,
-  body.asides-hidden .side-reopen.local { display: grid; }
+  body.no-secondary-sidebar .side-reopen.secondary,
+  body.secondary-auto-folded .side-reopen.secondary,
+  body.asides-hidden .side-reopen.secondary { display: grid; }
   body.no-end-panel .side-reopen.end,
   body.asides-hidden .side-reopen.end { display: grid; }
   .page-container {
@@ -578,61 +587,68 @@
     align-items: stretch;
     position: relative;
   }
-  .local-sidebar,
+  .secondary-sidebar,
   .end-panel {
     min-width: var(--side-min);
     max-width: var(--side-max);
     flex-shrink: 0;
+  }
+  .secondary-sidebar { max-width: var(--secondary-sidebar-max); }   /* secondary 만 max 300 (end 는 360 유지) */
+  .secondary-sidebar,
+  .end-panel {
     padding: 0;
     display: flex;
     flex-direction: column;
     position: relative;
+    transition: width 200ms ease, min-width 200ms ease, max-width 200ms ease;
   }
-  .local-sidebar {
-    width: var(--local-sidebar);
+  .secondary-sidebar {
+    width: var(--secondary-sidebar);
     border-right: 1px solid var(--border-secondary);
   }
   .end-panel {
     width: var(--end-panel);
     border-left: 1px solid var(--border-secondary);
   }
-  .local-sidebar .region,
+  .secondary-sidebar .region,
   .end-panel .region { width: 100%; height: 100%; padding: 8px; }
-  /* localSidebar content containers — localSidebar / panel 모드별 분기 */
-  .local-sidebar__content {
+  /* secondarySidebar content containers — secondarySidebar / panel 모드별 분기 */
+  .secondary-sidebar__content {
     flex: 1;
     min-height: 0;
     flex-direction: column;
     width: 100%;
     display: none;
   }
-  .local-sidebar__content.panel { display: flex; padding: 8px; }
-  body.header-lnb .local-sidebar__content.lnb { display: none; }
-  body.header-lnb .local-sidebar__content.panel { display: none; }
-  /* localSidebar view 토글 — body.local-view-{view} 가 set 되면 해당 view 만 보임 (default knowledge) */
-  body.header-lnb.local-view-knowledge .local-sidebar__content[data-view="knowledge"],
-  body.header-lnb:not(.local-view-goals):not(.local-view-notice) .local-sidebar__content[data-view="knowledge"] { display: flex; }
-  body.header-lnb.local-view-goals .local-sidebar__content[data-view="goals"] { display: flex; }
-  body.header-lnb.local-view-goals .local-sidebar__content[data-view="knowledge"] { display: none; }
-  body.header-lnb.local-view-notice .local-sidebar__content[data-view="notice"] { display: flex; }
-  body.header-lnb.local-view-notice .local-sidebar__content[data-view="knowledge"],
-  body.header-lnb.local-view-notice .local-sidebar__content[data-view="goals"] { display: none; }
+  .secondary-sidebar__content.panel { display: flex; flex-direction: column; padding: 0; }
+  body.header-lnb .secondary-sidebar__content.lnb { display: none; }
+  body.header-lnb .secondary-sidebar__content.panel { display: none; }
+  /* secondarySidebar view 토글 — body.secondary-view-{view} 가 set 되면 해당 view 만 보임 (default knowledge) */
+  body.header-lnb.secondary-view-knowledge .secondary-sidebar__content[data-view="knowledge"],
+  body.header-lnb:not(.secondary-view-goals):not(.secondary-view-notice) .secondary-sidebar__content[data-view="knowledge"] { display: flex; }
+  body.header-lnb.secondary-view-goals .secondary-sidebar__content[data-view="goals"] { display: flex; }
+  body.header-lnb.secondary-view-goals .secondary-sidebar__content[data-view="knowledge"] { display: none; }
+  body.header-lnb.secondary-view-notice .secondary-sidebar__content[data-view="notice"] { display: flex; }
+  body.header-lnb.secondary-view-notice .secondary-sidebar__content[data-view="knowledge"],
+  body.header-lnb.secondary-view-notice .secondary-sidebar__content[data-view="goals"] { display: none; }
 
   /* end-panel view 토글 — knowledge default, goals 시 동일 organisation tree 노출 */
+  /* endPanel 타이틀바 — 페이지 타이틀바 형태 (46px, 하단 보더). collapse(⊡)는 여기 소속, 메뉴(220)는 아래 */
+  .end-panel__header { display: none; }   /* endPanel 타이틀바 영역 삭제 (드래그로만 접힘, 버튼 불필요) */
   .end-panel__content { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
   .end-panel__content[data-view="goals"] { display: none; }
-  body.local-view-goals .end-panel__content[data-view="knowledge"] { display: none; }
-  body.local-view-goals .end-panel__content[data-view="goals"] { display: flex; }
-  body.local-view-notice .end-panel__content[data-view="knowledge"] { display: none; }
+  body.secondary-view-goals .end-panel__content[data-view="knowledge"] { display: none; }
+  body.secondary-view-goals .end-panel__content[data-view="goals"] { display: flex; }
+  body.secondary-view-notice .end-panel__content[data-view="knowledge"] { display: none; }
 
   /* tree row indent (data-depth 0~3) */
-  .nav-tree__row { padding-left: 8px; gap: 4px; }
-  .nav-tree__row[data-depth="1"] { padding-left: 24px; }
-  .nav-tree__row[data-depth="2"] { padding-left: 44px; }
-  .nav-tree__row[data-depth="3"] { padding-left: 64px; }
-  .nav-tree__chevron { width: 10px; height: 10px; flex-shrink: 0; color: var(--text-dim); fill: currentColor; margin-right: 2px; }
+  .nav-tree__row { padding-left: 6px; gap: 6px; }
+  .nav-tree__row[data-depth="1"] { padding-left: 28px; }
+  .nav-tree__row[data-depth="2"] { padding-left: 50px; }
+  .nav-tree__row[data-depth="3"] { padding-left: 72px; }
+  .nav-tree__chevron { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-weak); fill: currentColor; }
 
-  /* localSidebar search box (goals view) */
+  /* secondarySidebar search box (goals view) */
   .ls-search {
     display: flex; align-items: center; gap: 6px;
     margin: 0 0 6px;
@@ -644,17 +660,17 @@
   .ls-search input {
     flex: 1; min-width: 0;
     border: 0; outline: none; background: transparent;
-    font: inherit; font-size: 13px; color: var(--text);
+    font: inherit; font-size: 14px; color: var(--text);
   }
   .ls-search input::placeholder { color: var(--text-dim); }
 
   /* Notice page-header actions */
   .page-header__actions { display: none; align-items: center; gap: 6px; margin-left: auto; }
-  body.local-view-notice .page-header__actions[data-view="notice"] { display: inline-flex; }
+  body.secondary-view-notice .page-header__actions[data-view="notice"] { display: inline-flex; }
   .ph-btn {
     display: inline-flex; align-items: center; gap: 4px;
     height: 28px; padding: 0 12px;
-    font: inherit; font-size: 13px; font-weight: 500;
+    font: inherit; font-size: 14px; font-weight: 500;
     border: 1px solid transparent; border-radius: 6px;
     cursor: pointer;
     background: transparent;
@@ -696,7 +712,7 @@
   .notice-detail__crumb {
     flex: 1; min-width: 0;
     margin-left: 4px;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-dim);
     white-space: nowrap;
     overflow: hidden;
@@ -732,7 +748,7 @@
   .notice-detail__meta {
     display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-dim);
   }
   .notice-detail__meta .dot { color: var(--text-dim); }
@@ -779,7 +795,7 @@
   .notice-attach__thumb--xlsx { background: #27ae60; }
   .notice-attach__info { min-width: 0; }
   .notice-attach__name {
-    font-size: 13px; color: var(--text);
+    font-size: 14px; color: var(--text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .notice-attach__size { font-size: 11px; color: var(--text-dim); }
@@ -791,7 +807,7 @@
     border: 1px solid rgba(0,0,0,.08);
     border-radius: 14px;
     background: #fff;
-    font: inherit; font-size: 13px;
+    font: inherit; font-size: 14px;
     cursor: pointer;
   }
   .notice-reaction:hover { background: rgba(0,0,0,.03); }
@@ -805,12 +821,12 @@
     border-top: 1px solid rgba(0,0,0,.06);
     display: flex; flex-direction: column; gap: 14px;
   }
-  .notice-comments__head { font-size: 13px; color: var(--text-dim); }
+  .notice-comments__head { font-size: 14px; color: var(--text-dim); }
   .notice-comments__empty {
     display: flex; flex-direction: column; align-items: center; gap: 6px;
     padding: 28px 0;
     color: var(--text-dim);
-    font-size: 13px;
+    font-size: 14px;
   }
   .notice-comments__empty-icon {
     width: 36px; height: 36px;
@@ -829,7 +845,7 @@
   .notice-comments__input input {
     flex: 1; min-width: 0;
     border: 0; outline: none; background: transparent;
-    font: inherit; font-size: 13px; color: var(--text);
+    font: inherit; font-size: 14px; color: var(--text);
   }
   .notice-comments__input input::placeholder { color: var(--text-dim); }
   .notice-comments__send {
@@ -870,7 +886,7 @@
     border-radius: 8px;
     color: var(--text);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
     flex-shrink: 0;
   }
@@ -895,7 +911,7 @@
     background: transparent;
     color: var(--text-dim);
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
@@ -1012,7 +1028,7 @@
   .notice-item__meta .dot { color: var(--text-dim); }
   .notice-item__desc {
     margin-top: 10px;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
     line-height: 1.45;
     display: -webkit-box;
@@ -1032,35 +1048,35 @@
     background: rgba(0,0,0,.05);
     border-radius: 3px;
   }
-  /* localSidebar 메뉴 영역 */
-  .local-sidebar__menu {
+  /* secondarySidebar 메뉴 영역 */
+  .secondary-sidebar__menu {
     flex: 1;
     min-height: 0;
-    padding: 6px 8px 12px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     gap: 1px;
     overflow-y: auto;
     overflow-x: hidden;
   }
-  /* localSidebar 모드 헤더 — page-header 와 동일한 스타일 */
-  .local-sidebar__lnb-header {
+  /* secondarySidebar 모드 헤더 — page-header 와 동일한 스타일 */
+  .secondary-sidebar__lnb-header {
     height: var(--page-header);
-    padding: 7px 12px 7px 20px;
+    padding: 0 12px;
     display: flex;
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
     background: #fff;
   }
-  .local-sidebar__lnb-header .page-header__title {
+  .secondary-sidebar__lnb-header .page-header__title {
     flex: 1;
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .local-sidebar__lnb-header .size {
+  .secondary-sidebar__lnb-header .size {
     margin-left: 6px;
     font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
     font-size: 10px;
@@ -1068,14 +1084,14 @@
     color: var(--accent);
     vertical-align: middle;
   }
-  /* globalSidebar 접힘 + localSidebar 모드: fold 버튼(7,7)이 localSidebar 헤더 좌측과 겹침 → 여백 확보 */
-  body.folded.header-lnb .local-sidebar__lnb-header { padding-left: 48px; }
-  /* globalSidebar 접힘 시 localSidebar 타이틀 숨김 (Figma 레퍼런스) */
-  body.folded.header-lnb .local-sidebar__lnb-header .page-header__title { display: none; }
-  body.local-dragging .local-sidebar,
+  /* primarySidebar 접힘 + secondarySidebar 모드: fold 버튼(7,7)이 secondarySidebar 헤더 좌측과 겹침 → 여백 확보 */
+  body.folded.header-lnb .secondary-sidebar__lnb-header { padding-left: 48px; }
+  /* primarySidebar 접힘 시 secondarySidebar 타이틀 숨김 (Figma 레퍼런스) */
+  body.folded.header-lnb .secondary-sidebar__lnb-header .page-header__title { display: none; }
+  body.secondary-dragging .secondary-sidebar,
   body.end-dragging .end-panel { transition: none; }
 
-  /* Aside resize handles — localSidebar는 우측 엣지, endPanel는 좌측 엣지 */
+  /* Aside resize handles — secondarySidebar는 우측 엣지, endPanel는 좌측 엣지 */
   .side-resizer {
     position: absolute;
     top: 0; bottom: 0;
@@ -1083,7 +1099,7 @@
     cursor: col-resize;
     z-index: 5;
   }
-  .side-resizer.local { right: -4px; }
+  .side-resizer.secondary { right: -4px; }
   .side-resizer.end { left: -4px; }
   .side-resizer::after {
     content: "";
@@ -1094,11 +1110,11 @@
     border-radius: 1px;
     transition: background 120ms;
   }
-  .side-resizer.local::after { right: 3px; }
+  .side-resizer.secondary::after { right: 3px; }
   .side-resizer.end::after { left: 3px; }
   .side-resizer:hover::after,
   .side-resizer.dragging::after { background: #aaa; }
-  /* Option B: narrow-vw 에서 localSidebar 도 inline 유지 → 리사이저 활성 (auto-fold 폐기됨) */
+  /* Option B: narrow-vw 에서 secondarySidebar 도 inline 유지 → 리사이저 활성 (auto-fold 폐기됨) */
 
   .page-main {
     flex: 1; min-width: 0;
@@ -1160,14 +1176,14 @@
     overflow: auto;
     padding: 0;
   }
-  /* localView 별 main table 토글 (knowledge default, goals 시 다른 테이블 노출) */
+  /* secondaryView 별 main table 토글 (knowledge default, goals 시 다른 테이블 노출) */
   .pm-table-wrap[data-view="goals"] { display: none; }
   .pm-table-wrap[data-view="notice"] { display: none; }
-  body.local-view-goals .pm-table-wrap[data-view="knowledge"] { display: none; }
-  body.local-view-goals .pm-table-wrap[data-view="goals"] { display: flex; flex-direction: column; }
-  body.local-view-notice .pm-table-wrap[data-view="knowledge"],
-  body.local-view-notice .pm-table-wrap[data-view="goals"] { display: none; }
-  body.local-view-notice .pm-table-wrap[data-view="notice"] { display: flex; flex-direction: column; padding: 0; }
+  body.secondary-view-goals .pm-table-wrap[data-view="knowledge"] { display: none; }
+  body.secondary-view-goals .pm-table-wrap[data-view="goals"] { display: flex; flex-direction: column; }
+  body.secondary-view-notice .pm-table-wrap[data-view="knowledge"],
+  body.secondary-view-notice .pm-table-wrap[data-view="goals"] { display: none; }
+  body.secondary-view-notice .pm-table-wrap[data-view="notice"] { display: flex; flex-direction: column; padding: 0; }
 
   /* Goals table — 행높이 40, 행간 보더 없음, 트리 들여쓰기, 사이클 pill */
   .pm-table.pm-table--goals tbody td { height: 40px; border-bottom: 0 !important; }
@@ -1214,14 +1230,14 @@
   .pm-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 14px;
   }
   .pm-table thead th {
     height: 40px;
     padding: 0 8px;
     text-align: left;
     border-bottom: 1px solid var(--border-secondary);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 400;
     color: var(--text-weak);
     background: #fff;
@@ -1236,6 +1252,7 @@
     border-bottom: 1px solid var(--border-primary);
     color: var(--text);
     white-space: nowrap;
+    vertical-align: middle;
   }
   .pm-table tbody tr { cursor: pointer; }
   .pm-table tbody tr:hover { background: rgba(0,0,0,.02); }
@@ -1273,7 +1290,7 @@
   .pm-cat {
     display: inline-block;
     color: var(--text-weak);
-    font-size: 12px;
+    font-size: 14px;
   }
   .pm-assignee {
     display: inline-flex;
@@ -1289,7 +1306,7 @@
   }
   .pm-date {
     font-family: "Pretendard Variable", Pretendard, -apple-system, "Inter", "Segoe UI", sans-serif;
-    font-size: 12px;
+    font-size: 14px;
     color: var(--text-weak);
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
@@ -1340,22 +1357,22 @@
   /* asides-hidden 시점: page-main 이 viewport 보다 넓어져 reopen 버튼이 밖으로 밀리는 걸 방지 */
   body.asides-hidden .page-main { min-width: 0; }
 
-  /* narrow-vw 에서 localSidebar 자동 접힘 — 단, 사용자가 직접 조절한 경우엔 유지 */
-  body.local-auto-folded .local-sidebar { display: none; }
+  /* narrow-vw 에서 secondarySidebar 자동 접힘 — 단, 사용자가 직접 조절한 경우엔 유지 */
+  body.secondary-auto-folded .secondary-sidebar { width: 0; min-width: 0; max-width: 0; overflow: hidden; border-width: 0; }
   /* asides-hidden: cascade 2단계 — 둘 다 완전히 숨김 */
-  body.asides-hidden .local-sidebar,
-  body.asides-hidden .end-panel { display: none; }
+  body.asides-hidden .secondary-sidebar,
+  body.asides-hidden .end-panel { width: 0; min-width: 0; max-width: 0; overflow: hidden; border-width: 0; }
 
-  /* narrow mutex 모드: 사이드 visibility 는 no-local-sidebar / no-end-panel 로 자동 처리됨
+  /* narrow mutex 모드: 사이드 visibility 는 no-secondary-sidebar / no-end-panel 로 자동 처리됨
      (apply() 에서 isLocalVisible / isEndVisible 기반으로 토글) */
-  /* narrow 에서도 globalSidebar 접힘 시 hover 로 floating-navbar 노출 (wide 와 동일) */
+  /* narrow 에서도 primarySidebar 접힘 시 hover 로 floating-primary-sidebar 노출 (wide 와 동일) */
   /* narrow 에서 lnb-reopen 은 local 이 visible 일 땐 숨김 (이미 펼쳐져 있으니 redundant) */
-  body.narrow.narrow-show-local .page-header__lnb-reopen { display: none !important; }
+  body.narrow.narrow-show-secondary .page-header__lnb-reopen { display: none !important; }
   /* narrow 에서 page-main 내부 콘텐츠가 좁으면 가로 스크롤 (pm-table-wrap 이 처리) */
   body.narrow .pm-table-wrap { overflow-x: auto; }
   body.narrow .pm-table { min-width: 600px; }
   /* narrow 에서 lnb-reopen 은 항상 보임 (active 든 inactive 든 토글 액세스용) */
-  body.narrow.header-lnb:not(.local-disabled) .page-header__lnb-reopen { display: grid; }
+  body.narrow.header-lnb:not(.secondary-disabled) .page-header__lnb-reopen { display: grid; }
 
   /* ─── Sheet — 우측에서 슬라이드인, floating overlay (push 안 함) ─── */
   .sheet {
@@ -1386,15 +1403,15 @@
   }
   body.sheet-fullscreen .sheet-resizer,
   body.sheet-expanded .sheet-resizer { display: none; }
-  /* fullscreen (vw 강제) — 풀 vw 덮음 (globalSidebar 포함) */
+  /* fullscreen (vw 강제) — 풀 vw 덮음 (primarySidebar 포함) */
   body.sheet-fullscreen .sheet {
     left: 0;
     right: 0;
     width: 100vw;
   }
-  /* expanded (사용자 expand 클릭) — globalSidebar 제외 영역 */
+  /* expanded (사용자 expand 클릭) — primarySidebar 제외 영역 */
   body.sheet-expanded .sheet {
-    left: var(--navbar);
+    left: var(--primary-sidebar);
     right: 0;
     width: auto;
     box-shadow: none;
@@ -1482,7 +1499,7 @@
     margin: 0 6px;
     flex-shrink: 0;
   }
-  /* sheet 타이틀바 fold 버튼 — globalSidebar 접힘 + fullscreen/expanded 일 때만 노출 (Figma 8383-2717892) */
+  /* sheet 타이틀바 fold 버튼 — primarySidebar 접힘 + fullscreen/expanded 일 때만 노출 (Figma 8383-2717892) */
   .sheet__fold-btn,
   .sheet__fold-sep { display: none !important; }
   body.folded.sheet-fullscreen .sheet__fold-btn,
@@ -1496,10 +1513,10 @@
   body.sheet-expanded .sheet .sheet__title { display: none; }
   body.sheet-fullscreen .sheet .sheet__breadcrumb[data-view="knowledge"],
   body.sheet-expanded .sheet .sheet__breadcrumb[data-view="knowledge"] { display: inline-flex !important; }
-  body.sheet-fullscreen.local-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"],
-  body.sheet-expanded.local-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"] { display: none !important; }
-  body.sheet-fullscreen.local-view-goals .sheet .sheet__breadcrumb[data-view="goals"],
-  body.sheet-expanded.local-view-goals .sheet .sheet__breadcrumb[data-view="goals"] { display: inline-flex !important; }
+  body.sheet-fullscreen.secondary-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"],
+  body.sheet-expanded.secondary-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"] { display: none !important; }
+  body.sheet-fullscreen.secondary-view-goals .sheet .sheet__breadcrumb[data-view="goals"],
+  body.sheet-expanded.secondary-view-goals .sheet .sheet__breadcrumb[data-view="goals"] { display: inline-flex !important; }
   .sheet__body {
     flex: 1; min-height: 0;
     padding: 8px;
@@ -1509,10 +1526,11 @@
 
   /* ─── Folded state ─── */
   /* folded = (viewport < 1280) OR (user-folded cookie)
-     접힘 시 AppNavBar는 flow 에서 완전히 빠지고, fold 버튼만 floating 으로 남음. */
-  body.folded .app-navbar {
-    position: absolute;
-    left: 0; top: 0;
+     접힘 시 PrimarySidebar는 flow 에서 완전히 빠지고, fold 버튼만 floating 으로 남음. */
+  body.folded .primary-sidebar {
+    /* position: relative 유지 → flex 흐름 안에서 width 220→0 이 애니메이션되어 메인이 부드럽게 슬라이드.
+       (absolute 로 빼면 흐름에서 즉시 사라져 "확 접힘") fold-btn 은 overflow:visible 로 좌상단 노출 */
+    position: relative;
     width: 0;
     min-width: 0;
     max-width: none;
@@ -1521,51 +1539,65 @@
     z-index: 30;
     overflow: visible;
   }
-  /* fold-btn 영역만 빠져나와 클릭 받게, 나머지 navbar 영역(width 0이라 안 보이지만)은 click 차단 */
-  body.folded #app-navbar > * { pointer-events: none; }
-  body.folded #app-navbar .app-navbar__header,
-  body.folded #app-navbar .app-navbar__header * { pointer-events: auto; }
+  /* fold-btn 영역만 빠져나와 클릭 받게, 나머지 primary-sidebar 영역(width 0이라 안 보이지만)은 click 차단 */
+  body.folded #primary-sidebar > * { pointer-events: none; }
+  body.folded #primary-sidebar .primary-sidebar__header,
+  body.folded #primary-sidebar .primary-sidebar__header * { pointer-events: auto; }
   /* fold-btn / floating fold-btn 명시적 클릭 가능 보장 */
   #btn-fold, #btn-fold-floating { pointer-events: auto !important; cursor: pointer; }
-  /* 뷰포트 자동 fullscreen 일 때 floating navbar 의 fold 버튼 숨김 (vw 가 좁아 inline 펼침 불가) */
+  /* 뷰포트 자동 fullscreen 일 때 floating primary-sidebar 의 fold 버튼 숨김 (vw 가 좁아 inline 펼침 불가) */
   body.sheet-fullscreen #btn-fold-floating { display: none !important; }
   #btn-fold svg, #btn-fold use,
   #btn-fold-floating svg, #btn-fold-floating use { pointer-events: none; }
-  body.folded #app-navbar .app-navbar__header {
+  body.folded #primary-sidebar .primary-sidebar__header {
     position: absolute;
-    left: 7px; top: 7px;
-    height: 32px;
-    width: 32px;
+    left: 9px; top: 9px;     /* 28px 버튼을 46 타이틀바에 세로 중앙 정렬 (bottom 37) */
+    height: 28px;
+    width: 28px;
     padding: 0;
     gap: 0;
     pointer-events: auto;
   }
-  body.folded #app-navbar .app-navbar__title { display: none; }
-  body.folded #app-navbar .app-navbar__thumb { display: none; }
-  body.folded #app-navbar > .app-navbar__body { display: none; }
-  body.folded .navbar-resizer { display: none; }
+  body.folded #primary-sidebar .primary-sidebar__title { display: none; }
+  body.folded #primary-sidebar .primary-sidebar__thumb { display: none; }
+  body.folded #primary-sidebar > .primary-sidebar__body { display: none; }
+  body.folded .primary-sidebar-resizer { display: none; }
 
-  /* Floating AppNavBar — hover 시 왼쪽에서 slide-in overlay */
-  .floating-navbar {
+  /* Floating PrimarySidebar — hover 시 왼쪽에서 slide-in overlay */
+  .floating-primary-sidebar {
     position: absolute;
-    left: 7px;
-    top: 41px;
-    bottom: 7px;
-    width: var(--floating-navbar-w);
-    min-width: var(--navbar-min);
-    max-width: var(--navbar-max);
+    left: 12px;          /* 좌측 인셋 12 (Figma) */
+    top: 43px;           /* 트리거 버튼 bottom 37 + 6 → 타이틀바 바닥(46)보다 3px 위로 올라옴 */
+    bottom: 12px;        /* 하단 인셋 12 (Figma) */
+    width: var(--floating-primary-sidebar-w);
+    min-width: var(--primary-sidebar-min);
+    max-width: var(--primary-sidebar-max);
     background: #ffffff;
-    border: 1px solid rgba(0,0,0,0.1);
-    border-radius: 8px;
-    box-shadow: var(--shadow-dialog);
+    border: 0;
+    border-radius: 8px;   /* --radius/medium */
+    /* Figma popover/bg 그림자: 1px 링 + 4/8 + 8/20 (rgba 0.04 / 0.04 / 0.06) */
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.04),
+      0 4px 8px rgba(0,0,0,0.04),
+      0 8px 20px rgba(0,0,0,0.06);
     padding: 0;
     display: none;
     flex-direction: column;
     z-index: 40;
+    overflow: visible;   /* resizer 가 팝오버 밖으로 나가도 안 잘리도록 — 콘텐츠 클립은 __inner 가 담당 */
+  }
+  /* 콘텐츠(헤더+바디)만 둥근 모서리로 클립. resizer 는 이 래퍼 밖이라 클립 안 됨 */
+  .floating-primary-sidebar__inner {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
+    border-radius: inherit;
   }
   /* folded 상태일 때만 DOM 에 올리고, 기본은 화면 밖(left) 으로 치워둠 */
-  body.folded .floating-navbar {
+  body.folded .floating-primary-sidebar {
     display: flex;
     opacity: 0;
     transform: translateX(calc(-100% - 20px));
@@ -1574,43 +1606,44 @@
       opacity 160ms ease,
       transform 260ms cubic-bezier(0.22, 0.8, 0.3, 1);
   }
-  .floating-navbar .app-navbar__header { height: 46px; padding: 7px 8px 7px 12px; }
-  .floating-navbar .app-navbar__body { padding: 6px 8px 12px; }
-  body.folded.floating-shown .floating-navbar {
+  .floating-primary-sidebar .primary-sidebar__header { height: 46px; padding: 7px 8px 7px 12px; }
+  .floating-primary-sidebar .primary-sidebar__body { padding: 6px 8px 12px; }
+  body.folded.floating-shown .floating-primary-sidebar {
     opacity: 1;
     transform: translateX(0);
     pointer-events: auto;
   }
-  /* sheet fullscreen/expanded 중에도 floating-navbar 가 sheet 위로 올라오게 z-index 끌어올림 */
-  body.sheet-fullscreen .floating-navbar,
-  body.sheet-expanded .floating-navbar { z-index: 70; }
+  /* sheet fullscreen/expanded 중에도 floating-primary-sidebar 가 sheet 위로 올라오게 z-index 끌어올림 */
+  body.sheet-fullscreen .floating-primary-sidebar,
+  body.sheet-expanded .floating-primary-sidebar { z-index: 70; }
   /* 리사이즈 드래그 중엔 애니메이션 제거 (즉각 반영) */
-  body.floating-dragging .floating-navbar { transition: none; }
-  /* Floating navbar 의 resize area (우측 엣지) */
-  .floating-navbar-resizer {
+  body.floating-dragging .floating-primary-sidebar { transition: none; }
+  /* Floating primary-sidebar 의 resize area (우측 엣지) */
+  .floating-primary-sidebar-resizer {
     position: absolute;
-    right: -4px; top: 0; bottom: 0;
-    width: 8px;
+    right: -8px; top: 0; bottom: 0;   /* 팝오버 우측 엣지에 16px 폭으로 걸침 (Figma: right -8 / w16) */
+    width: 16px;
     cursor: col-resize;
     z-index: 10;
   }
-  .floating-navbar-resizer::after {
+  .floating-primary-sidebar-resizer::after {
     content: "";
     position: absolute;
-    right: 3px; top: 0; bottom: 0;
+    right: 7px; top: 12px; bottom: 12px;   /* 라인은 엣지 중앙 + 상하 12 인셋 (둥근 모서리 침범 방지) */
     width: 2px;
     background: transparent;
     border-radius: 1px;
     transition: background 120ms;
   }
-  .floating-navbar-resizer:hover::after,
-  .floating-navbar-resizer.dragging::after { background: #aaa; }
+  .floating-primary-sidebar-resizer:hover::after,
+  .floating-primary-sidebar-resizer.dragging::after { background: #aaa; }
 
   /* 숨김 처리 — toggle로 On/Off */
-  body.no-local-sidebar .local-sidebar { display: none; }
-  body.no-end-panel .end-panel { display: none; }
+  body.no-secondary-sidebar .secondary-sidebar { width: 0; min-width: 0; max-width: 0; overflow: hidden; border-width: 0; }
+  body.no-end-panel .end-panel { width: 0; min-width: 0; max-width: 0; overflow: hidden; border-width: 0; }
 
   .info {
+    display: none;            /* 하단 디버그 정보 바 숨김 */
     position: fixed;
     left: 50%; bottom: 12px;
     transform: translateX(-50%);
@@ -1644,21 +1677,21 @@
     font-variant-numeric: tabular-nums;
   }
   .resize-tooltip .ico { display: none; }
-  body.navbar-dragging .resize-tooltip.navbar,
+  body.primary-sidebar-dragging .resize-tooltip.primary-sidebar,
   body.floating-dragging .resize-tooltip.floating,
-  body.local-dragging .resize-tooltip.local,
+  body.secondary-dragging .resize-tooltip.secondary,
   body.end-dragging .resize-tooltip.end {
     display: inline-flex;
   }
   /* sheet 툴팁 — 완전 삭제 (호버 시 stuck 버그 방지) */
   .resize-tooltip.sheet { display: none !important; }
 
-  body.navbar-dragging, body.floating-dragging,
-  body.local-dragging, body.end-dragging, body.sheet-dragging {
+  body.primary-sidebar-dragging, body.floating-dragging,
+  body.secondary-dragging, body.end-dragging, body.sheet-dragging {
     cursor: col-resize; user-select: none;
   }
-  body.navbar-dragging *, body.floating-dragging *,
-  body.local-dragging *, body.end-dragging *, body.sheet-dragging * {
+  body.primary-sidebar-dragging *, body.floating-dragging *,
+  body.secondary-dragging *, body.end-dragging *, body.sheet-dragging * {
     cursor: col-resize !important; user-select: none !important;
   }
 </style>
@@ -1678,9 +1711,26 @@
           <path d="M4 17C3.44772 17 3 17.4477 3 18C3 18.5523 3.44772 19 4 19H20C20.5523 19 21 18.5523 21 18C21 17.4477 20.5523 17 20 17H4Z"/>
         </symbol>
         <symbol id="i-close" viewBox="0 0 24 24"><path d="M19.0711 4.92893C19.4616 5.31946 19.4616 5.95262 19.0711 6.34315L13.4142 12L19.0711 17.6569C19.4616 18.0474 19.4616 18.6805 19.0711 19.0711C18.6805 19.4616 18.0474 19.4616 17.6569 19.0711L12 13.4142L6.34315 19.0711C5.95262 19.4616 5.31946 19.4616 4.92893 19.0711C4.53841 18.6805 4.53841 18.0474 4.92893 17.6569L10.5858 12L4.92893 6.34315C4.53841 5.95262 4.53841 5.31946 4.92893 4.92893C5.31946 4.53841 5.95262 4.53841 6.34315 4.92893L12 10.5858L17.6569 4.92893C18.0474 4.53841 18.6805 4.53841 19.0711 4.92893Z"/></symbol>
+        <!-- bulletlist (fx DS) — StartPanel collapsed reopen 트리거 아이콘 -->
+        <symbol id="i-bulletlist" viewBox="0 0 24 24">
+          <g transform="scale(1.5) translate(-259 -46)">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M260.333 49.9998C260.333 49.2635 260.93 48.6665 261.666 48.6665C262.403 48.6665 263 49.2635 263 49.9998C263 50.7362 262.403 51.3332 261.666 51.3332C260.93 51.3332 260.333 50.7362 260.333 49.9998ZM264.333 49.9998C264.333 49.6316 264.631 49.3332 265 49.3332H273C273.368 49.3332 273.666 49.6316 273.666 49.9998C273.666 50.368 273.368 50.6665 273 50.6665L265 50.6665C264.631 50.6665 264.333 50.368 264.333 49.9998ZM260.333 53.9998C260.333 53.2635 260.93 52.6665 261.666 52.6665C262.403 52.6665 263 53.2635 263 53.9998C263 54.7362 262.403 55.3332 261.666 55.3332C260.93 55.3332 260.333 54.7362 260.333 53.9998ZM264.333 53.9998C264.333 53.6316 264.631 53.3332 265 53.3332L273 53.3332C273.368 53.3332 273.666 53.6316 273.666 53.9998C273.666 54.368 273.368 54.6665 273 54.6665L265 54.6665C264.631 54.6665 264.333 54.368 264.333 53.9998ZM260.333 57.9998C260.333 57.2635 260.93 56.6665 261.666 56.6665C262.403 56.6665 263 57.2635 263 57.9998C263 58.7362 262.403 59.3332 261.666 59.3332C260.93 59.3332 260.333 58.7362 260.333 57.9998ZM264.333 57.9998C264.333 57.6316 264.631 57.3332 265 57.3332L273 57.3332C273.368 57.3332 273.666 57.6316 273.666 57.9998C273.666 58.368 273.368 58.6665 273 58.6665L265 58.6665C264.631 58.6665 264.333 58.368 264.333 57.9998Z"/>
+          </g>
+        </symbol>
+        <!-- 계약 요청(StartPanel) 메뉴 아이콘 (fx DS) -->
+        <symbol id="i-person-badge-arrow-right" viewBox="0 0 24 24" fill="currentColor"><g transform="scale(1.5) translate(-260 -92)"><path fill-rule="evenodd" clip-rule="evenodd" d="M268 94.3333C266.251 94.3333 264.833 95.751 264.833 97.4999C264.833 99.2488 266.251 100.667 268 100.667C269.749 100.667 271.167 99.2488 271.167 97.4999C271.167 95.751 269.749 94.3333 268 94.3333ZM266.167 97.4999C266.167 96.4874 266.988 95.6666 268 95.6666C269.013 95.6666 269.833 96.4874 269.833 97.4999C269.833 98.5124 269.013 99.3333 268 99.3333C266.988 99.3333 266.167 98.5124 266.167 97.4999Z"/><path d="M268 101C265.329 101 262.998 102.563 262.248 104.812L262.234 104.851C262.162 105.068 262.078 105.319 262.053 105.554C262.02 105.863 262.082 106.163 262.286 106.446C262.512 106.759 262.816 106.897 263.124 106.954C263.372 107 263.67 107 263.956 107L270.667 107C269.796 107 269.055 106.443 268.781 105.667H264C263.834 105.667 263.705 105.667 263.594 105.663C263.498 105.659 263.433 105.654 263.387 105.647C263.392 105.621 263.4 105.587 263.413 105.542C263.437 105.46 263.469 105.364 263.512 105.234C264.056 103.604 265.82 102.333 268 102.333C268.966 102.333 269.849 102.582 270.582 103.002C270.61 103.001 270.638 103 270.667 103C270.667 102.562 270.809 102.125 271.095 101.763C270.185 101.276 269.122 101 268 101Z"/><path d="M272.195 102.529C272.456 102.268 272.878 102.268 273.138 102.529L275.138 104.529C275.398 104.789 275.398 105.211 275.138 105.471L273.138 107.471C272.878 107.732 272.456 107.732 272.195 107.471C271.935 107.211 271.935 106.789 272.195 106.529L273.057 105.667H270.667C270.299 105.667 270 105.368 270 105C270 104.632 270.299 104.333 270.667 104.333H273.057L272.195 103.471C271.935 103.211 271.935 102.789 272.195 102.529Z"/></g></symbol>
+        <symbol id="i-halfcircle-circle" viewBox="0 0 24 24" fill="currentColor"><g transform="scale(1.5) translate(-260 -122)"><path d="M270.828 132.828C270.237 133.42 269.478 133.807 268.664 133.945C268.301 134.006 268 133.701 268 133.333L268 126.667C268 126.298 268.301 125.994 268.664 126.055C269.478 126.192 270.237 126.58 270.828 127.171C271.579 127.922 272 128.939 272 130C272 131.061 271.579 132.078 270.828 132.828Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M268 123.333C264.318 123.333 261.333 126.318 261.333 130C261.333 133.682 264.318 136.667 268 136.667C271.682 136.667 274.667 133.682 274.667 130C274.667 126.318 271.682 123.333 268 123.333ZM262.667 130C262.667 127.054 265.055 124.667 268 124.667C270.946 124.667 273.333 127.054 273.333 130C273.333 132.945 270.946 135.333 268 135.333C265.055 135.333 262.667 132.945 262.667 130Z"/></g></symbol>
+        <symbol id="i-person" viewBox="0 0 24 24" fill="currentColor"><g transform="scale(1.5) translate(-260 -150)"><path fill-rule="evenodd" clip-rule="evenodd" d="M268 152.333C266.251 152.333 264.833 153.751 264.833 155.5C264.833 157.249 266.251 158.667 268 158.667C269.749 158.667 271.167 157.249 271.167 155.5C271.167 153.751 269.749 152.333 268 152.333ZM266.167 155.5C266.167 154.487 266.988 153.667 268 153.667C269.013 153.667 269.833 154.487 269.833 155.5C269.833 156.512 269.013 157.333 268 157.333C266.988 157.333 266.167 156.512 266.167 155.5Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M268 159C265.329 159 262.998 160.563 262.248 162.812L262.234 162.851C262.162 163.068 262.078 163.319 262.053 163.554C262.02 163.863 262.082 164.163 262.286 164.446C262.512 164.759 262.816 164.897 263.124 164.954C263.372 165 263.67 165 263.956 165H272.044C272.33 165 272.628 165 272.876 164.954C273.184 164.897 273.488 164.759 273.714 164.446C273.918 164.163 273.981 163.863 273.948 163.554C273.923 163.319 273.838 163.068 273.766 162.851L273.753 162.812C273.002 160.563 270.671 159 268 159ZM263.512 163.234C264.056 161.604 265.82 160.333 268 160.333C270.18 160.333 271.944 161.604 272.488 163.234C272.531 163.364 272.563 163.46 272.587 163.542C272.6 163.587 272.608 163.621 272.613 163.647C272.567 163.654 272.502 163.659 272.406 163.663C272.295 163.667 272.166 163.667 272 163.667H264C263.834 163.667 263.705 163.667 263.594 163.663C263.498 163.659 263.433 163.654 263.387 163.647C263.392 163.621 263.4 163.587 263.413 163.542C263.437 163.46 263.469 163.364 263.512 163.234Z"/></g></symbol>
+        <symbol id="i-exclamationmark-circle" viewBox="0 0 24 24" fill="currentColor"><g transform="scale(1.5) translate(-238 -252)"><path d="M246.001 261.667C246.405 261.667 246.734 261.995 246.734 262.4C246.734 262.804 246.405 263.133 246.001 263.133C245.596 263.133 245.267 262.805 245.267 262.4C245.267 261.995 245.596 261.667 246.001 261.667Z"/><path d="M246.001 256.866C246.405 256.867 246.734 257.195 246.734 257.6V259.866C246.734 260.271 246.405 260.599 246.001 260.6C245.596 260.6 245.267 260.271 245.267 259.866V257.6C245.267 257.195 245.596 256.866 246.001 256.866Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M246 253.333C249.682 253.333 252.667 256.318 252.667 260C252.667 263.682 249.682 266.667 246 266.667C242.318 266.667 239.333 263.682 239.333 260C239.333 256.318 242.318 253.333 246 253.333ZM246 254.667C243.055 254.667 240.667 257.054 240.667 260C240.667 262.945 243.055 265.333 246 265.333C248.946 265.333 251.333 262.945 251.333 260C251.333 257.054 248.946 254.667 246 254.667Z"/></g></symbol>
+        <symbol id="i-check-circle" viewBox="0 0 24 24" fill="currentColor"><g transform="scale(1.5) translate(-238 -281)"><path d="M248.229 286.728C248.489 286.468 248.911 286.468 249.171 286.728C249.432 286.989 249.432 287.411 249.171 287.671L245.571 291.271C245.446 291.396 245.277 291.466 245.1 291.466C244.923 291.466 244.754 291.396 244.629 291.271L242.829 289.471C242.568 289.211 242.568 288.789 242.829 288.528C243.089 288.268 243.511 288.268 243.771 288.528L245.1 289.857L248.229 286.728Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M252.667 289C252.667 292.682 249.682 295.667 246 295.667C242.318 295.667 239.333 292.682 239.333 289C239.333 285.318 242.318 282.333 246 282.333C249.682 282.333 252.667 285.318 252.667 289ZM251.333 289C251.333 291.945 248.946 294.333 246 294.333C243.055 294.333 240.667 291.945 240.667 289C240.667 286.054 243.055 283.667 246 283.667C248.946 283.667 251.333 286.054 251.333 289Z"/></g></symbol>
+        <symbol id="i-idcard" viewBox="0 0 24 24" fill="currentColor"><g transform="scale(1.5) translate(-18 -189)"><path fill-rule="evenodd" clip-rule="evenodd" d="M22.3985 197.532C22.1483 197.198 22 196.783 22 196.333C22 195.229 22.8955 194.333 24 194.333C25.1046 194.333 26 195.229 26 196.333C26 196.783 25.8518 197.198 25.6015 197.532C26.0223 197.848 26.3406 198.281 26.5156 198.779C26.6377 199.126 26.4552 199.507 26.1079 199.629C25.7606 199.751 25.38 199.569 25.2578 199.221C25.1662 198.961 24.996 198.735 24.7707 198.576C24.5642 198.43 24.3209 198.345 24.0692 198.332C24.0463 198.333 24.0232 198.333 24 198.333C23.9769 198.333 23.9538 198.333 23.9308 198.332C23.6791 198.345 23.4358 198.43 23.2293 198.576C23.0041 198.735 22.8338 198.961 22.7422 199.221C22.62 199.569 22.2394 199.751 21.8921 199.629C21.5448 199.507 21.3623 199.126 21.4845 198.779C21.6594 198.281 21.9778 197.848 22.3985 197.532ZM23.3334 196.333C23.3334 195.965 23.6319 195.667 24 195.667C24.3682 195.667 24.6667 195.965 24.6667 196.333C24.6667 196.683 24.3984 196.969 24.0567 196.998C24.0378 196.997 24.0189 196.997 24 196.997C23.9811 196.997 23.9623 196.997 23.9434 196.998C23.6017 196.969 23.3334 196.683 23.3334 196.333Z"/><path d="M28.6667 195C28.2985 195 28 195.299 28 195.667C28 196.035 28.2985 196.333 28.6667 196.333H30C30.3682 196.333 30.6667 196.035 30.6667 195.667C30.6667 195.299 30.3682 195 30 195H28.6667Z"/><path d="M28 198.333C28 197.965 28.2985 197.667 28.6667 197.667H30C30.3682 197.667 30.6667 197.965 30.6667 198.333C30.6667 198.702 30.3682 199 30 199H28.6667C28.2985 199 28 198.702 28 198.333Z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M21.6667 191.667C20.378 191.667 19.3334 192.711 19.3334 194V200C19.3334 201.289 20.378 202.333 21.6667 202.333H30.3334C31.622 202.333 32.6667 201.289 32.6667 200V194C32.6667 192.711 31.622 191.667 30.3334 191.667H21.6667ZM20.6667 194C20.6667 193.448 21.1144 193 21.6667 193H30.3334C30.8857 193 31.3334 193.448 31.3334 194V200C31.3334 200.552 30.8857 201 30.3334 201H21.6667C21.1144 201 20.6667 200.552 20.6667 200V194Z"/></g></symbol>
         <!-- fx icons (Figma DS 에서 export 한 실제 path, fill-based) -->
+        <!-- panel-left (fx DS, outline + divider line) -->
         <symbol id="i-panel-left" viewBox="0 0 24 24">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M18.5 4C20.433 4 22 5.567 22 7.5V16.5C22 18.433 20.433 20 18.5 20H5.5C3.567 20 2 18.433 2 16.5V7.5C2 5.567 3.567 4 5.5 4H18.5ZM11 18H18.5C19.3284 18 20 17.3284 20 16.5V7.5C20 6.67157 19.3284 6 18.5 6H11V18ZM5.5 6C4.67157 6 4 6.67157 4 7.5V16.5C4 17.3284 4.67157 18 5.5 18H9V6H5.5Z"/>
+          <g transform="scale(1.5) translate(-207 -46)">
+            <path d="M211.833 51.0002C212.293 51.0002 212.666 51.3733 212.666 51.8335V56.1668C212.666 56.6271 212.293 57.0002 211.833 57.0002C211.373 57.0002 211 56.6271 211 56.1668V51.8335C211 51.3733 211.373 51.0002 211.833 51.0002Z"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M219.333 48.3335C220.622 48.3335 221.666 49.3782 221.666 50.6668V57.3335C221.666 58.6222 220.622 59.6668 219.333 59.6668H210.666C209.378 59.6668 208.333 58.6222 208.333 57.3335L208.333 50.6668C208.333 49.3782 209.378 48.3335 210.666 48.3335H219.333ZM210.666 49.6668C210.114 49.6668 209.666 50.1145 209.666 50.6668V57.3335C209.666 57.8858 210.114 58.3335 210.666 58.3335H219.333C219.885 58.3335 220.333 57.8858 220.333 57.3335V50.6668C220.333 50.1145 219.885 49.6668 219.333 49.6668H210.666Z"/>
+          </g>
         </symbol>
         <symbol id="i-magnifier" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M10 4C6.68629 4 4 6.68629 4 10C4 13.3137 6.68629 16 10 16C13.3137 16 16 13.3137 16 10C16 6.68629 13.3137 4 10 4ZM2 10C2 5.58172 5.58172 2 10 2C14.4183 2 18 5.58172 18 10C18 11.8487 17.3729 13.5509 16.3199 14.9056L21.7071 20.2929C22.0976 20.6834 22.0976 21.3166 21.7071 21.7071C21.3166 22.0976 20.6834 22.0976 20.2929 21.7071L14.9057 16.3198C13.551 17.3729 11.8487 18 10 18C5.58172 18 2 14.4183 2 10Z"/></symbol>
         <symbol id="i-bell" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0001 3.5C11.2478 3.5 10.6379 4.10945 10.6379 4.86125C10.6379 5.04672 10.6747 5.22308 10.7416 5.38389C11.1546 5.31377 11.5759 5.278 12.0001 5.278C12.4242 5.278 12.8456 5.31377 13.2585 5.38389C13.3255 5.22308 13.3623 5.04672 13.3623 4.86125C13.3623 4.10945 12.7524 3.5 12.0001 3.5ZM15.1703 5.9864C15.2954 5.6345 15.3637 5.25564 15.3637 4.86125C15.3637 3.00488 13.8577 1.5 12.0001 1.5C10.1424 1.5 8.6365 3.00488 8.6365 4.86125C8.6365 5.25564 8.70472 5.6345 8.82984 5.9864C8.28899 6.24469 7.78491 6.57095 7.33475 6.96083C6.07169 8.05472 5.32847 9.57165 5.32847 11.1894C5.32847 13.1704 4.83927 14.5701 4.26561 15.5396L4.25547 15.5567C3.8837 16.185 3.59267 16.6769 3.39729 17.0303C3.29964 17.2069 3.21295 17.372 3.14961 17.5141C3.1182 17.5846 3.08307 17.6703 3.05555 17.7619C3.03518 17.8297 2.98382 18.0091 3.00517 18.2275C3.01646 18.3428 3.04278 18.5787 3.18058 18.8201C3.31837 19.0615 3.50818 19.2042 3.60177 19.2726C3.76021 19.3884 3.9183 19.4377 3.99587 19.4592C4.08774 19.4846 4.17649 19.4995 4.24919 19.5093C4.39455 19.5287 4.56277 19.5385 4.73635 19.5445C5.08234 19.5565 5.56552 19.5565 6.1724 19.5565H8.29575C8.73592 21.1888 10.2276 22.39 12.0001 22.39C13.7725 22.39 15.2642 21.1888 15.7044 19.5565H17.8277C18.4346 19.5565 18.9178 19.5565 19.2638 19.5445C19.4374 19.5385 19.6056 19.5287 19.751 19.5093C19.8237 19.4995 19.9124 19.4846 20.0043 19.4592C20.0819 19.4377 20.2399 19.3884 20.3984 19.2726C20.492 19.2042 20.6818 19.0615 20.8196 18.8201C20.9574 18.5787 20.9837 18.3428 20.995 18.2275C21.0163 18.0091 20.965 17.8297 20.9446 17.7619C20.9171 17.6703 20.882 17.5846 20.8505 17.5141C20.7872 17.372 20.7005 17.2069 20.6029 17.0303C20.4075 16.6768 20.1164 16.185 19.7447 15.5567L19.7345 15.5396C19.1609 14.5701 18.6717 13.1704 18.6717 11.1894C18.6717 9.57165 17.9285 8.05472 16.6654 6.96083C16.2152 6.57095 15.7112 6.24469 15.1703 5.9864ZM13.4156 7.46288C13.4282 7.46657 13.4409 7.47001 13.4536 7.47319C14.1728 7.67148 14.826 8.01441 15.3546 8.4722C16.2186 9.22044 16.6703 10.202 16.6703 11.1894C16.6703 13.5187 17.2508 15.2714 18.0118 16.5575C18.2474 16.9557 18.4423 17.2851 18.5991 17.5552C18.3745 17.5565 18.1115 17.5565 17.805 17.5565H6.19512C5.88862 17.5565 5.62561 17.5565 5.40101 17.5552C5.55789 17.2851 5.75278 16.9557 5.98836 16.5575C6.74938 15.2714 7.32985 13.5187 7.32985 11.1894C7.32985 10.202 7.78157 9.22044 8.64552 8.4722C9.17411 8.01441 9.82734 7.67148 10.5466 7.47319C10.5593 7.47001 10.5719 7.46657 10.5845 7.46288C11.0358 7.34205 11.5124 7.278 12.0001 7.278C12.4878 7.278 12.9644 7.34205 13.4156 7.46288ZM10.462 19.5565C10.7893 20.0583 11.3559 20.39 12.0001 20.39C12.6442 20.39 13.2108 20.0583 13.5382 19.5565H10.462Z"/></symbol>
@@ -1700,10 +1750,13 @@
         <symbol id="i-arrow-left-and-arrow-right" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M16.293 3.293a1 1 0 0 1 1.414 0l5 5a1 1 0 0 1 0 1.414l-5 5a1 1 0 1 1-1.414-1.414L19.586 10H4a1 1 0 1 1 0-2h15.586l-3.293-3.293a1 1 0 0 1 0-1.414zM7.707 13.293a1 1 0 0 1 0 1.414L4.414 18H20a1 1 0 1 1 0 2H4.414l3.293 3.293a1 1 0 0 1-1.414 1.414l-5-5a1 1 0 0 1 0-1.414l5-5a1 1 0 0 1 1.414 0z" transform="translate(0 -2)"/></symbol>
         <symbol id="i-chevron-down" viewBox="0 0 11 10"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.325 3.33853L2.17353 2.49001L5.49926 5.81574L8.825 2.49001L9.67353 3.33853L5.49926 7.5128L1.325 3.33853Z"/></symbol>
         <symbol id="i-chevron-right" viewBox="0 0 10 11"><path fill-rule="evenodd" clip-rule="evenodd" d="M3.33853 9.67354L2.49 8.82501L5.81574 5.49928L2.49 2.17354L3.33853 1.32501L7.51279 5.49928L3.33853 9.67354Z"/></symbol>
+        <!-- FilledChevron (fx DS) — 메뉴 그룹 확장 indicator (우측) -->
+        <symbol id="i-chevron-down-filled" viewBox="0 0 12 12"><g transform="translate(3 3.667)"><path d="M5.39771 0H0.602287C0.11817 0 -0.167437 0.540236 0.106829 0.937176L2.50454 4.40734C2.74345 4.75311 3.25655 4.75311 3.49546 4.40734L5.89317 0.937177C6.16744 0.540237 5.88183 0 5.39771 0Z"/></g></symbol>
+        <symbol id="i-chevron-right-filled" viewBox="0 0 12 12"><g transform="translate(3.667 3) translate(0 6) rotate(-90)"><path d="M5.39771 0H0.602287C0.11817 0 -0.167437 0.540236 0.106829 0.937176L2.50454 4.40734C2.74345 4.75311 3.25655 4.75311 3.49546 4.40734L5.89317 0.937177C6.16744 0.540237 5.88183 0 5.39771 0Z"/></g></symbol>
         <symbol id="i-ellipsis-h" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
         <symbol id="i-expand-2directions" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M14 4a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0V6.41l-3.79 3.8a1 1 0 1 1-1.42-1.42L17.59 5H15a1 1 0 0 1-1-1zM3 15a1 1 0 0 1 1 1v2.59l3.79-3.8a1 1 0 1 1 1.42 1.42L5.41 20H8a1 1 0 1 1 0 2H3a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z"/></symbol>
         <symbol id="i-collapse-2directions" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M20.71 3.29a1 1 0 0 1 0 1.42L16.91 8.5h2.59a1 1 0 1 1 0 2h-5a1 1 0 0 1-1-1v-5a1 1 0 1 1 2 0v2.59l3.79-3.8a1 1 0 0 1 1.42 0zM3.29 20.71a1 1 0 0 1 0-1.42l3.8-3.79H4.5a1 1 0 1 1 0-2h5a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0v-2.59l-3.79 3.8a1 1 0 0 1-1.42 0z"/></symbol>
-        <!-- localSidebar 카테고리용 아이콘 -->
+        <!-- secondarySidebar 카테고리용 아이콘 -->
         <symbol id="i-apps" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
         <symbol id="i-questionmark" viewBox="0 0 24 24"><path d="M11.543 15.4195C10.8332 15.4195 10.4339 14.978 10.4339 14.32V13.8612C10.4339 12.3982 11.3922 11.4373 12.7409 10.537C13.9565 9.74056 14.6752 9.1086 14.6752 7.92261C14.6752 6.53751 13.4419 5.66317 11.8625 5.66317C10.5581 5.66317 9.54658 6.22587 9.10293 7.70619C8.93434 8.18232 8.55279 8.468 8.02928 8.468C7.37267 8.468 7 8.06112 7 7.4638C7 7.10887 7.08873 6.70199 7.28394 6.29512C8.04703 4.67629 9.8394 3.75 11.9601 3.75C14.8083 3.75 17 5.28227 17 7.9053C17 9.56742 16.0683 10.7188 14.5155 11.723C13.0692 12.6493 12.661 13.1081 12.6167 14.1642C12.6078 14.2421 12.6078 14.3374 12.6078 14.4239C12.5634 15.0212 12.2085 15.4195 11.543 15.4195ZM11.5519 20.25C10.7533 20.25 10.1056 19.6267 10.1056 18.8562C10.1056 18.0771 10.7533 17.4625 11.5519 17.4625C12.3594 17.4625 13.0071 18.0771 13.0071 18.8562C13.0071 19.6267 12.3594 20.25 11.5519 20.25Z"/></symbol>
         <symbol id="i-trendarrow-up" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M15 8C14.4477 8 14 7.55228 14 7C14 6.44772 14.4477 6 15 6H22C22.5523 6 23 6.44772 23 7V14C23 14.5523 22.5523 15 22 15C21.4477 15 21 14.5523 21 14V9.41421L14.8159 15.5983C14.6375 15.7768 14.4637 15.9506 14.3045 16.0858C14.1296 16.2342 13.9078 16.3938 13.618 16.4879C13.2163 16.6184 12.7837 16.6184 12.382 16.4879C12.0922 16.3938 11.8704 16.2342 11.6955 16.0858C11.5363 15.9506 11.3625 15.7768 11.1841 15.5983L8.42426 12.8385C8.21459 12.6288 8.09931 12.5146 8.01013 12.4389C8.00658 12.4359 8.00321 12.4331 8 12.4304C7.99679 12.4331 7.99342 12.4359 7.98987 12.4389C7.90069 12.5146 7.78541 12.6288 7.57574 12.8385L2.70711 17.7071C2.31658 18.0976 1.68342 18.0976 1.29289 17.7071C0.902369 17.3166 0.902369 16.6834 1.29289 16.2929L6.16152 11.4243C6.16904 11.4167 6.17656 11.4092 6.18406 11.4017C6.36251 11.2232 6.53629 11.0494 6.69551 10.9142C6.87036 10.7658 7.09225 10.6062 7.38197 10.5121C7.78365 10.3816 8.21635 10.3816 8.61803 10.5121C8.90775 10.6062 9.12964 10.7658 9.30449 10.9142C9.46371 11.0494 9.63749 11.2232 9.81594 11.4017L12.5757 14.1615C12.7854 14.3712 12.9007 14.4854 12.9899 14.5611C12.9934 14.5641 12.9968 14.5669 13 14.5696C13.0032 14.5669 13.0066 14.5641 13.0101 14.5611C13.0993 14.4854 13.2146 14.3712 13.4243 14.1615L19.5858 8H15Z"/></symbol>
@@ -1730,21 +1783,20 @@
         </symbol>
       </svg>
 
-      <!-- AppNavBar (always in DOM, styled per folded state) -->
-      <aside class="app-navbar" id="app-navbar">
-        <div class="app-navbar__header">
-          <span class="app-navbar__thumb" aria-hidden="true"></span>
-          <span class="app-navbar__title">
+      <!-- PrimarySidebar (always in DOM, styled per folded state) -->
+      <aside class="primary-sidebar" id="primary-sidebar">
+        <div class="primary-sidebar__header">
+          <span class="primary-sidebar__title">
             <span>회사명</span>
-            <svg class="app-navbar__title-arrow"><use href="#i-chevron-down"/></svg>
+            <svg class="primary-sidebar__title-arrow"><use href="#i-chevron-down"/></svg>
           </span>
           <button class="fold-btn" id="btn-fold" title="Toggle fold" aria-label="Toggle fold">
-            <svg class="ico ico-close"><use href="#i-chevron-2-left"/></svg>
-            <svg class="ico ico-fx ico-open"><use href="#i-menu"/></svg>
+            <svg class="ico ico-fx ico-close"><use href="#i-panel-left"/></svg>
+            <svg class="ico ico-fx ico-open"><use href="#i-panel-left"/></svg>
           </button>
         </div>
-        <nav class="app-navbar__body">
-          <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-navbar">220</span></div>
+        <nav class="primary-sidebar__body">
+          <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-primary-sidebar">220</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-magnifier"/></svg><span class="nav-item__label">검색</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-bell"/></svg><span class="nav-item__label">알림</span><span class="nav-item__badge">7</span></div>
 
@@ -1757,45 +1809,52 @@
           <div class="nav-item" data-gnb="goals-parent">
             <svg class="ico"><use href="#i-target"/></svg>
             <span class="nav-item__label">목표</span>
-            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right"/></svg>
-            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down"/></svg>
+            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right-filled"/></svg>
+            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down-filled"/></svg>
           </div>
           <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-my"><span class="nav-item__label">내 목표</span></div>
           <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-all"><span class="nav-item__label">전체 목표</span></div>
           <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-members"><span class="nav-item__label">구성원 목표</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-stopwatch"/></svg><span class="nav-item__label">근무</span></div>
 
-          <div class="nav-item"><svg class="ico"><use href="#i-banknote"/></svg><span class="nav-item__label">비용</span><svg class="nav-item__expand"><use href="#i-chevron-down"/></svg></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">증빙</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">전표</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">지출결의</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">카드 관리</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">비용 정책 · 자동화 관리</span></div>
 
           <div class="nav-item"><svg class="ico"><use href="#i-text-document"/></svg><span class="nav-item__label">워크플로우</span></div>
-          <div class="nav-item"><svg class="ico"><use href="#i-signature"/></svg><span class="nav-item__label">전자결제</span><svg class="nav-item__expand"><use href="#i-chevron-right"/></svg></div>
+          <div class="nav-item" data-gnb="contract-parent">
+            <svg class="ico"><use href="#i-signature"/></svg>
+            <span class="nav-item__label">전자결제</span>
+            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right-filled"/></svg>
+            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down-filled"/></svg>
+          </div>
+          <div class="nav-item nav-item--sub gnb-contract-sub"><span class="nav-item__label">서식 관리</span></div>
+          <div class="nav-item nav-item--sub gnb-contract-sub"><span class="nav-item__label">계약 요청 관리</span></div>
+          <div class="nav-item nav-item--sub gnb-contract-sub"><span class="nav-item__label">계약서 관리</span></div>
 
-          <div class="nav-item" data-gnb="knowledge-parent"><svg class="ico"><use href="#i-text-book"/></svg><span class="nav-item__label">지식 관리</span><svg class="nav-item__expand"><use href="#i-chevron-down"/></svg></div>
-          <div class="nav-item nav-item--sub active" data-gnb="knowledge-docs"><span class="nav-item__label">지식 문서</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">외부 서비스 지식</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">AI 피드백 이슈</span></div>
+          <div class="nav-item" data-gnb="knowledge-parent">
+            <svg class="ico"><use href="#i-text-book"/></svg>
+            <span class="nav-item__label">지식 관리</span>
+            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right-filled"/></svg>
+            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down-filled"/></svg>
+          </div>
+          <div class="nav-item nav-item--sub gnb-knowledge-sub active" data-gnb="knowledge-docs"><span class="nav-item__label">지식 문서</span></div>
+          <div class="nav-item nav-item--sub gnb-knowledge-sub"><span class="nav-item__label">외부 서비스 지식</span></div>
+          <div class="nav-item nav-item--sub gnb-knowledge-sub"><span class="nav-item__label">AI 피드백 이슈</span></div>
         </nav>
-        <div class="navbar-resizer" id="navbar-resizer"></div>
+        <div class="primary-sidebar-resizer" id="primary-sidebar-resizer"></div>
       </aside>
 
-      <!-- Floating AppNavBar (only shown when folded + hover) -->
-      <aside class="floating-navbar" id="floating-navbar">
-        <div class="app-navbar__header">
-          <span class="app-navbar__thumb" aria-hidden="true"></span>
-          <span class="app-navbar__title">
+      <!-- Floating PrimarySidebar (only shown when folded + hover) -->
+      <aside class="floating-primary-sidebar" id="floating-primary-sidebar">
+        <div class="floating-primary-sidebar__inner">
+        <div class="primary-sidebar__header">
+          <span class="primary-sidebar__title">
             <span>회사명</span>
-            <svg class="app-navbar__title-arrow"><use href="#i-chevron-down"/></svg>
+            <svg class="primary-sidebar__title-arrow"><use href="#i-chevron-down"/></svg>
           </span>
           <button class="fold-btn" id="btn-fold-floating" title="Toggle fold" aria-label="Toggle fold">
             <svg class="ico"><use href="#i-panel-left"/></svg>
           </button>
         </div>
-        <nav class="app-navbar__body">
+        <nav class="primary-sidebar__body">
           <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-floating">220</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-magnifier"/></svg><span class="nav-item__label">검색</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-bell"/></svg><span class="nav-item__label">알림</span><span class="nav-item__badge">7</span></div>
@@ -1807,43 +1866,51 @@
           <div class="nav-item" data-gnb="goals-parent">
             <svg class="ico"><use href="#i-target"/></svg>
             <span class="nav-item__label">목표</span>
-            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right"/></svg>
-            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down"/></svg>
+            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right-filled"/></svg>
+            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down-filled"/></svg>
           </div>
           <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-my"><span class="nav-item__label">내 목표</span></div>
           <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-all"><span class="nav-item__label">전체 목표</span></div>
           <div class="nav-item nav-item--sub gnb-goals-sub" data-gnb="goals-members"><span class="nav-item__label">구성원 목표</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-stopwatch"/></svg><span class="nav-item__label">근무</span></div>
-          <div class="nav-item"><svg class="ico"><use href="#i-banknote"/></svg><span class="nav-item__label">비용</span><svg class="nav-item__expand"><use href="#i-chevron-down"/></svg></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">증빙</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">전표</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">지출결의</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">카드 관리</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">비용 정책 · 자동화 관리</span></div>
           <div class="nav-item"><svg class="ico"><use href="#i-text-document"/></svg><span class="nav-item__label">워크플로우</span></div>
-          <div class="nav-item"><svg class="ico"><use href="#i-signature"/></svg><span class="nav-item__label">전자결제</span><svg class="nav-item__expand"><use href="#i-chevron-right"/></svg></div>
-          <div class="nav-item" data-gnb="knowledge-parent"><svg class="ico"><use href="#i-text-book"/></svg><span class="nav-item__label">지식 관리</span><svg class="nav-item__expand"><use href="#i-chevron-down"/></svg></div>
-          <div class="nav-item nav-item--sub active" data-gnb="knowledge-docs"><span class="nav-item__label">지식 문서</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">외부 서비스 지식</span></div>
-          <div class="nav-item nav-item--sub"><span class="nav-item__label">AI 피드백 이슈</span></div>
+          <div class="nav-item" data-gnb="contract-parent">
+            <svg class="ico"><use href="#i-signature"/></svg>
+            <span class="nav-item__label">전자결제</span>
+            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right-filled"/></svg>
+            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down-filled"/></svg>
+          </div>
+          <div class="nav-item nav-item--sub gnb-contract-sub"><span class="nav-item__label">서식 관리</span></div>
+          <div class="nav-item nav-item--sub gnb-contract-sub"><span class="nav-item__label">계약 요청 관리</span></div>
+          <div class="nav-item nav-item--sub gnb-contract-sub"><span class="nav-item__label">계약서 관리</span></div>
+          <div class="nav-item" data-gnb="knowledge-parent">
+            <svg class="ico"><use href="#i-text-book"/></svg>
+            <span class="nav-item__label">지식 관리</span>
+            <svg class="nav-item__expand expand-collapsed"><use href="#i-chevron-right-filled"/></svg>
+            <svg class="nav-item__expand expand-expanded"><use href="#i-chevron-down-filled"/></svg>
+          </div>
+          <div class="nav-item nav-item--sub gnb-knowledge-sub active" data-gnb="knowledge-docs"><span class="nav-item__label">지식 문서</span></div>
+          <div class="nav-item nav-item--sub gnb-knowledge-sub"><span class="nav-item__label">외부 서비스 지식</span></div>
+          <div class="nav-item nav-item--sub gnb-knowledge-sub"><span class="nav-item__label">AI 피드백 이슈</span></div>
         </nav>
-        <div class="floating-navbar-resizer" id="floating-navbar-resizer"></div>
+        </div><!-- /.floating-primary-sidebar__inner -->
+        <div class="floating-primary-sidebar-resizer" id="floating-primary-sidebar-resizer"></div>
       </aside>
 
-      <!-- PageRoot — flex row: localSidebar | page-right -->
+      <!-- PageRoot — flex row: secondarySidebar | page-right -->
       <div class="page-root">
-        <aside class="local-sidebar" id="local-sidebar">
-          <button class="side-toggle" id="btn-local-toggle" title="Close localSidebar" aria-label="Close localSidebar">
-            <svg class="ico ico-fx"><use href="#i-panel-left"/></svg>
+        <aside class="secondary-sidebar" id="secondary-sidebar">
+          <button class="side-toggle" id="btn-secondary-toggle" title="Close secondarySidebar" aria-label="Close secondarySidebar">
+            <svg class="ico ico-fx"><use href="#i-chevron-2-left"/></svg>
           </button>
 
-          <!-- localSidebar — knowledge view (지식 문서) -->
-          <div class="local-sidebar__content lnb" data-view="knowledge">
-            <div class="local-sidebar__lnb-header">
+          <!-- secondarySidebar — knowledge view (지식 문서) -->
+          <div class="secondary-sidebar__content lnb" data-view="knowledge">
+            <div class="secondary-sidebar__lnb-header">
               <span class="page-header__title">지식 문서</span>
             </div>
-            <nav class="local-sidebar__menu">
-              <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-local-lnb">220</span></div>
+            <nav class="secondary-sidebar__menu">
+              <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-secondary-lnb">220</span></div>
               <div class="nav-item active"><svg class="ico"><use href="#i-grid"/></svg><span class="nav-item__label">모든 문서</span></div>
               <div class="nav-item"><svg class="ico"><use href="#i-questionmark"/></svg><span class="nav-item__label">카테고리 미분류</span></div>
 
@@ -1867,13 +1934,13 @@
             </nav>
           </div>
 
-          <!-- localSidebar — goals view (전체 목표) -->
-          <div class="local-sidebar__content lnb" data-view="goals">
-            <div class="local-sidebar__lnb-header">
+          <!-- secondarySidebar — goals view (전체 목표) -->
+          <div class="secondary-sidebar__content lnb" data-view="goals">
+            <div class="secondary-sidebar__lnb-header">
               <span class="page-header__title">전체 목표</span>
             </div>
-            <nav class="local-sidebar__menu">
-              <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-local-lnb-goals">220</span></div>
+            <nav class="secondary-sidebar__menu">
+              <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-secondary-lnb-goals">220</span></div>
               <div class="ls-search">
                 <svg class="ico"><use href="#i-magnifier"/></svg>
                 <input type="text" placeholder="조직 검색" />
@@ -1885,18 +1952,18 @@
               <div class="nav-item"><svg class="ico"><use href="#i-building-2"/></svg><span class="nav-item__label">Relation Squad</span></div>
 
               <div class="nav-section__header">조직별 보기</div>
-              <div class="nav-item nav-tree__row" data-depth="0"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Product Group</span></div>
-              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Service Tribe</span></div>
+              <div class="nav-item nav-tree__row" data-depth="0"><svg class="nav-tree__chevron"><use href="#i-chevron-down-filled"/></svg><span class="nav-item__label">Product Group</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down-filled"/></svg><span class="nav-item__label">Service Tribe</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Relation Squad</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Finance Squad</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Time Tracking Squad</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Mini Squad</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Insight Squad</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Mobile Squad</span></div>
-              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-right"/></svg><span class="nav-item__label">Product Group 직속</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-right-filled"/></svg><span class="nav-item__label">Product Group 직속</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">QA Team</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Security Team</span></div>
-              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Training Center</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down-filled"/></svg><span class="nav-item__label">Training Center</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center BE</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center FE</span></div>
               <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center PD</span></div>
@@ -1904,9 +1971,9 @@
             </nav>
           </div>
 
-          <!-- localSidebar — notice view (공지) -->
-          <div class="local-sidebar__content lnb" data-view="notice">
-            <div class="local-sidebar__lnb-header">
+          <!-- secondarySidebar — notice view (공지) -->
+          <div class="secondary-sidebar__content lnb" data-view="notice">
+            <div class="secondary-sidebar__lnb-header">
               <span class="page-header__title">공지</span>
             </div>
             <div class="notice-controlbar">
@@ -1991,17 +2058,46 @@
             </div>
           </div>
 
-          <!-- Panel 모드 컨텐츠 (placeholder, 추후 다른 UI 적용) -->
-          <div class="local-sidebar__content panel">
-            <div class="region">localSidebar<br><span class="accent" id="w-local">220</span></div>
+          <!-- StartPanel 모드 컨텐츠 (startAside=panel) — 사이드바 형태: 타이틀바 + 계약 요청 메뉴 -->
+          <div class="secondary-sidebar__content panel">
+            <div class="secondary-sidebar__lnb-header"><span class="page-header__title">계약 요청</span></div>
+            <nav class="secondary-sidebar__menu">
+              <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-secondary">240</span></div>
+
+              <div class="nav-item nav-tree__row" data-depth="0"><svg class="ico"><use href="#i-text-document"/></svg><span class="nav-item__label">개별 계약서</span><svg class="nav-item__expand"><use href="#i-chevron-down-filled"/></svg></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="ico"><use href="#i-person-badge-arrow-right"/></svg><span class="nav-item__label">전체</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="ico"><use href="#i-halfcircle-circle"/></svg><span class="nav-item__label">진행 상태별</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="ico"><use href="#i-person"/></svg><span class="nav-item__label">대상자별</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="ico"><use href="#i-text-document"/></svg><span class="nav-item__label">서식별</span></div>
+
+              <div class="nav-section__header">구성원 정보 반영</div>
+              <div class="nav-item"><svg class="ico"><use href="#i-exclamationmark-circle"/></svg><span class="nav-item__label">반영 필요</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-check-circle"/></svg><span class="nav-item__label">반영 완료</span></div>
+
+              <div class="nav-section__header">계약 요청 정보</div>
+              <div class="nav-item"><svg class="ico"><use href="#i-idcard"/></svg><span class="nav-item__label">기본 설정</span></div>
+              <div class="nav-item"><svg class="ico"><use href="#i-person-2"/></svg><span class="nav-item__label">계약 대상자</span></div>
+
+              <div class="nav-item nav-tree__row" data-depth="0"><svg class="ico"><use href="#i-text-book"/></svg><span class="nav-item__label">계약서 서식</span><svg class="nav-item__expand"><use href="#i-chevron-down-filled"/></svg></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><span class="nav-item__label">서식명</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><span class="nav-item__label">서식명</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><span class="nav-item__label">서식명</span></div>
+
+              <div class="nav-item nav-tree__row" data-depth="0"><svg class="ico"><use href="#i-person-2"/></svg><span class="nav-item__label">대상자별 입력 정보</span><svg class="nav-item__expand"><use href="#i-chevron-down-filled"/></svg></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="ico"><use href="#i-bulletlist"/></svg><span class="nav-item__label">전체</span></div>
+              <div class="nav-item nav-tree__row" data-depth="1"><svg class="ico"><use href="#i-bulletlist"/></svg><span class="nav-item__label">서식별</span><svg class="nav-item__expand"><use href="#i-chevron-down-filled"/></svg></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">서식명</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">서식명</span></div>
+              <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">서식명</span></div>
+            </nav>
           </div>
 
-          <div class="side-resizer local" id="local-resizer"></div>
+          <div class="side-resizer secondary" id="secondary-resizer"></div>
         </aside>
         <div class="page-right">
           <div class="page-header">
-            <button class="page-header__lnb-reopen" id="btn-lnb-reopen" title="Open localSidebar" aria-label="Open localSidebar">
-              <svg class="ico ico-fx"><use href="#i-panel-left"/></svg>
+            <button class="page-header__lnb-reopen" id="btn-lnb-reopen" title="Open secondarySidebar" aria-label="Open secondarySidebar">
+              <svg class="ico ico-fx"><use href="#i-bulletlist"/></svg>
             </button>
             <span class="page-header__title">타이틀</span>
             <nav class="page-header__breadcrumb breadcrumb-knowledge" aria-label="Breadcrumb" data-view="knowledge">
@@ -2050,7 +2146,7 @@
           </div>
           <div class="page-container">
             <!-- Aside 접힌 상태에서 펼치기 버튼 (PageMain 양쪽 엣지) -->
-            <button class="side-reopen local" id="btn-local-reopen" title="Open localSidebar" aria-label="Open localSidebar">
+            <button class="side-reopen secondary" id="btn-secondary-reopen" title="Open secondarySidebar" aria-label="Open secondarySidebar">
               <svg class="ico ico-fx"><use href="#i-panel-left"/></svg>
             </button>
             <button class="side-reopen end" id="btn-end-reopen" title="Open endPanel" aria-label="Open endPanel">
@@ -2342,16 +2438,20 @@
               </div>
             </main>
             <aside class="end-panel" id="end-panel">
-              <button class="side-toggle" id="btn-end-toggle" title="Close endPanel" aria-label="Close endPanel">
-                <svg class="ico ico-fx ico-flip-x"><use href="#i-panel-left"/></svg>
-              </button>
+              <div class="end-panel__header">
+                <button class="side-toggle" id="btn-end-toggle" title="Close endPanel" aria-label="Close endPanel">
+                  <svg class="ico ico-fx ico-flip-x"><use href="#i-panel-left"/></svg>
+                </button>
+              </div>
               <!-- end-panel default content (knowledge view) -->
               <div class="end-panel__content" data-view="knowledge">
-                <div class="region">endPanel<br><span class="accent" id="w-end">260</span></div>
+                <nav class="secondary-sidebar__menu">
+                  <div class="nav-item nav-item--size"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="nav-item__label" id="w-end">220</span></div>
+                </nav>
               </div>
-              <!-- end-panel goals view — localSidebar 와 동일 컨텐츠 -->
+              <!-- end-panel goals view — secondarySidebar 와 동일 컨텐츠 -->
               <div class="end-panel__content" data-view="goals">
-                <nav class="local-sidebar__menu">
+                <nav class="secondary-sidebar__menu">
                   <div class="ls-search">
                     <svg class="ico"><use href="#i-magnifier"/></svg>
                     <input type="text" placeholder="조직 검색" />
@@ -2363,18 +2463,18 @@
                   <div class="nav-item"><svg class="ico"><use href="#i-building-2"/></svg><span class="nav-item__label">Relation Squad</span></div>
 
                   <div class="nav-section__header">조직별 보기</div>
-                  <div class="nav-item nav-tree__row" data-depth="0"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Product Group</span></div>
-                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Service Tribe</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="0"><svg class="nav-tree__chevron"><use href="#i-chevron-down-filled"/></svg><span class="nav-item__label">Product Group</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down-filled"/></svg><span class="nav-item__label">Service Tribe</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Relation Squad</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Finance Squad</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Time Tracking Squad</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Mini Squad</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Insight Squad</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Mobile Squad</span></div>
-                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-right"/></svg><span class="nav-item__label">Product Group 직속</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-right-filled"/></svg><span class="nav-item__label">Product Group 직속</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">QA Team</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Security Team</span></div>
-                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down"/></svg><span class="nav-item__label">Training Center</span></div>
+                  <div class="nav-item nav-tree__row" data-depth="1"><svg class="nav-tree__chevron"><use href="#i-chevron-down-filled"/></svg><span class="nav-item__label">Training Center</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center BE</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center FE</span></div>
                   <div class="nav-item nav-tree__row" data-depth="2"><span class="nav-item__label">Training Center PD</span></div>
@@ -2391,8 +2491,8 @@
       <aside class="sheet" id="sheet">
         <div class="sheet-resizer" id="sheet-resizer"></div>
         <div class="sheet__titlebar">
-          <!-- globalSidebar 접힘 + sheet fullscreen/expanded 시에만 노출 — 클릭 시 GNB 펼침 -->
-          <button class="sheet__btn sheet__fold-btn" id="btn-sheet-fold" title="Open globalSidebar" aria-label="Open globalSidebar">
+          <!-- primarySidebar 접힘 + sheet fullscreen/expanded 시에만 노출 — 클릭 시 GNB 펼침 -->
+          <button class="sheet__btn sheet__fold-btn" id="btn-sheet-fold" title="Open primarySidebar" aria-label="Open primarySidebar">
             <svg class="ico"><use href="#i-menu"/></svg>
           </button>
           <span class="sheet__sep sheet__fold-sep" aria-hidden="true"></span>
@@ -2453,9 +2553,9 @@
 </div>
 
 <!-- Resize tooltips — 사이드바 size 뱃지와 동일 (i-arrow-left-and-arrow-right + 숫자) -->
-<div class="resize-tooltip navbar" id="tt-navbar"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">220</span></div>
+<div class="resize-tooltip primary-sidebar" id="tt-primary-sidebar"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">220</span></div>
 <div class="resize-tooltip floating" id="tt-floating"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">220</span></div>
-<div class="resize-tooltip local" id="tt-local"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">220</span></div>
+<div class="resize-tooltip secondary" id="tt-secondary"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">220</span></div>
 <div class="resize-tooltip end" id="tt-end"><svg class="ico"><use href="#i-arrow-left-and-arrow-right"/></svg><span class="resize-tooltip__value">260</span></div>
 
 <!-- Info bar -->
@@ -2485,16 +2585,18 @@
   };
   const clearCookie = () => localStorage.removeItem(COOKIE_KEY);
 
-  // AppNavBar 자동 접힘: viewport 기반
-  const NAV_FOLD_BREAK = 1024;   // 미만 AppNavBar 자동 접힘 (vw < 1024)
+  // PrimarySidebar 자동 접힘: viewport 기반
+  const NAV_FOLD_BREAK = 1024;   // 미만 PrimarySidebar 자동 접힘 (vw < 1024)
   // Aside 전환: main(PageMain) 확보 폭 기반 (viewport 의존 X)
   const MAIN_MIN = 400;          // mainAll ≤ 이 값 → narrow mutex 모드 (셋 중 하나만 visible)
-  const NAV_MIN = 180, NAV_MAX = 260;
-  const SIDE_MIN = 180, SIDE_MAX = 360;
+  const NAV_MIN = 180, NAV_MAX = 300;     // primary + floating sidebar (max 300)
+  const SIDE_MIN = 180, SIDE_MAX = 360;   // endPanel (max 360)
+  const SEC_MAX = 300;                    // secondarySidebar max (end 와 분리 — 300)
   const SHEET_MIN = 500, SHEET_MAX = 900;
   const MAIN_RESERVE = 220;  // sheet 사이즈 변경 시 main 영역 최소 확보 폭
   // aside effective clamp (뷰포트 의존 없이 drag 범위만 enforce)
-  const clampSide = (userW) => Math.max(SIDE_MIN, Math.min(SIDE_MAX, userW));
+  const clampSide = (userW) => Math.max(SIDE_MIN, Math.min(SIDE_MAX, userW));   // endPanel
+  const clampSec  = (userW) => Math.max(SIDE_MIN, Math.min(SEC_MAX,  userW));   // secondarySidebar
 
   // 쿠키 값: 'folded' | 'unfolded' | null
   // cookiePref: wide viewport 에서만 의미 있는 persistent 상태
@@ -2502,7 +2604,7 @@
 
   // 컨트롤 상태 persistence (refresh 시 유지)
   const PERSIST_KEY = 'FX_PROTOTYPE_STATE';
-  const STATE_VERSION = '2026-04-27-v14';  /* sheet drag max revert + persisted state clear */
+  const STATE_VERSION = '2026-06-22-v18';  /* default widths 240 → 220 (primary/secondary/end) */
   try {
     if (localStorage.getItem('FX_PROTOTYPE_STATE_VERSION') !== STATE_VERSION) {
       localStorage.removeItem(PERSIST_KEY);
@@ -2520,23 +2622,25 @@
   const savePersisted = (s) => {
     try {
       const persistable = {
-        navbarWidth: s.navbarWidth,
+        primarySidebarWidth: s.primarySidebarWidth,
         floatingWidth: s.floatingWidth,
-        localWidth: s.localWidth,
+        secondaryWidth: s.secondaryWidth,
         endWidth: s.endWidth,
         sheetWidth: s.sheetWidth,
-        localSidebarOpen: s.localSidebarOpen,
+        secondarySidebarOpen: s.secondarySidebarOpen,
         endPanelOpen: s.endPanelOpen,
-        localUsed: s.localUsed,
+        startAsideUsed: s.startAsideUsed,
         endUsed: s.endUsed,
         sheetOpen: s.sheetOpen,
         sheetExpanded: s.sheetExpanded,
-        localAutoFolded: s.localAutoFolded,
-        globalAutoFolded: s.globalAutoFolded,
+        secondaryAutoFolded: s.secondaryAutoFolded,
+        primaryAutoFolded: s.primaryAutoFolded,
         headerMode: s.headerMode,
         cookiePref: s.cookiePref,
-        localView: s.localView,
+        secondaryView: s.secondaryView,
         gnbGoalsExpanded: s.gnbGoalsExpanded,
+        gnbContractExpanded: s.gnbContractExpanded,
+        gnbKnowledgeExpanded: s.gnbKnowledgeExpanded,
       };
       localStorage.setItem(PERSIST_KEY, JSON.stringify(persistable));
     } catch (e) {}
@@ -2545,77 +2649,93 @@
 
   const state = {
     cookiePref: persisted.cookiePref ?? null,
-    navbarWidth: persisted.navbarWidth ?? 220,
+    primarySidebarWidth: persisted.primarySidebarWidth ?? 220,
     floatingWidth: persisted.floatingWidth ?? 220,
-    localWidth: persisted.localWidth ?? 220,
-    endWidth: persisted.endWidth ?? 260,
+    secondaryWidth: persisted.secondaryWidth ?? 220,
+    endWidth: persisted.endWidth ?? 220,
     sheetWidth: persisted.sheetWidth ?? 680,
-    localSidebarOpen: persisted.localSidebarOpen ?? true,
+    secondarySidebarOpen: persisted.secondarySidebarOpen ?? true,
     endPanelOpen: persisted.endPanelOpen ?? true,
-    localUsed: persisted.localUsed ?? true,    // localSidebar 사용/미사용 (옵션 — 글로벌은 필수)
+    startAsideUsed: persisted.startAsideUsed ?? true,    // startAside 사용/미사용 (옵션 — primarySidebar 는 필수). 타입은 headerMode(lnb=secondarySidebar / start=startPanel)
     endUsed: persisted.endUsed ?? true,        // endPanel 사용/미사용 (옵션)
     sheetOpen: persisted.sheetOpen ?? false,
     sheetExpanded: persisted.sheetExpanded ?? false,  // 사용자 expand 클릭 의도 → sheet-expanded 모드
     // auto-fold 추적: true 면 시스템이 접은 것 → 공간 생기면 자동으로 다시 펼침
     //                 false 면 사용자가 직접 접은 것 → 자동으로 펼치지 않음
-    localAutoFolded: persisted.localAutoFolded ?? false,
-    globalAutoFolded: persisted.globalAutoFolded ?? false,
+    secondaryAutoFolded: persisted.secondaryAutoFolded ?? false,
+    primaryAutoFolded: persisted.primaryAutoFolded ?? false,
     floatingShown: false,
     headerMode: persisted.headerMode ?? 'lnb',
     // narrow mutex: mainAll < 400 일 때 global/local/end 중 하나만 보임
-    narrowActive: 'none',  // 'none' | 'global' | 'local' | 'end'
+    narrowActive: 'none',  // 'none' | 'primary' | 'secondary' | 'end'
     narrowMode: false,     // 직전 frame 의 narrow 여부 (transition 감지용)
     // local sidebar 의 view 모드 ('knowledge' | 'goals')
-    localView: persisted.localView ?? 'knowledge',
-    // globalSidebar 의 목표 메뉴 펼침 상태 (default: 접힘)
+    secondaryView: persisted.secondaryView ?? 'knowledge',
+    // primarySidebar 의 목표 메뉴 펼침 상태 (default: 접힘)
     gnbGoalsExpanded: persisted.gnbGoalsExpanded ?? false,
+    gnbContractExpanded: persisted.gnbContractExpanded ?? false,
+    gnbKnowledgeExpanded: persisted.gnbKnowledgeExpanded ?? true,
   };
 
   // global fold 의도 — wide vw 에서의 cookie 값만 반영 (narrow 는 cascade/mutex 에서 처리)
   const isFolded = () => state.cookiePref === 'folded';
 
+  // ── "사용자가 직접 펼친 영역" 추적 (마지막 1개만) ──
+  //   정책: 뷰포트가 좁아져 자동 cascade 접기가 일어날 때, 사용자가 마지막으로 직접 펼친 영역은
+  //         가장 마지막에 접는다(= 최대한 유지). 기존 "직접 접은건 자동으로 펼치지 않는다"의 거울 정책.
+  //   세션 한정: sessionStorage 사용 → 새로고침엔 유지되지만 탭/브라우저를 닫으면 리셋됨.
+  const SESSION_EXP_KEY = 'FX_LAST_USER_EXPANDED';   // 'primary' | 'secondary' | 'end' | null
+  let lastUserExpanded = (() => { try { return sessionStorage.getItem(SESSION_EXP_KEY) || null; } catch (e) { return null; } })();
+  const setLastUserExpanded = (region) => {
+    lastUserExpanded = region || null;
+    try {
+      if (lastUserExpanded) sessionStorage.setItem(SESSION_EXP_KEY, lastUserExpanded);
+      else sessionStorage.removeItem(SESSION_EXP_KEY);
+    } catch (e) {}
+  };
+
   const apply = () => {
     // 정책: mainAll < 400 이면 narrow.
     //   narrowActive='none' → cascade auto-close 순서: end → local → global (main ≥ 400 되면 stop)
-    //   narrowActive ∈ {'global'|'local'|'end'} → mutex (그 하나만 visible)
+    //   narrowActive ∈ {'primary'|'secondary'|'end'} → mutex (그 하나만 visible)
     //   wide (mainAll ≥ 400) → 사용자 prefs 그대로
-    const navW = state.navbarWidth;
-    const localW = state.localUsed ? clampSide(state.localWidth) : 0;
+    const primaryW = state.primarySidebarWidth;
+    const secondaryW = state.startAsideUsed ? clampSec(state.secondaryWidth) : 0;
     const endW = state.endUsed ? clampSide(state.endWidth) : 0;
 
     // ── auto-unfold: 시스템이 접은 사이드바는 공간 생기면 자동 복원 ──
-    const localUnfoldOk = () => {
-      const navC = isFolded() ? 0 : navW;
+    const secondaryUnfoldOk = () => {
+      const primaryC = isFolded() ? 0 : primaryW;
       const endC = (state.endUsed && state.endPanelOpen) ? endW : 0;
       if (state.sheetOpen) {
         // sheet 열림: main 가시 ≥ 100 보장 가능?
-        return innerWidth - navC - localW - state.sheetWidth >= 100;
+        return innerWidth - primaryC - secondaryW - state.sheetWidth >= 100;
       }
       // sheet 닫힘: mainAll ≥ 400 보장 가능?
-      return innerWidth - navC - localW - endC >= MAIN_MIN;
+      return innerWidth - primaryC - secondaryW - endC >= MAIN_MIN;
     };
-    const globalUnfoldOk = () => {
-      const localC = (state.localUsed && state.localSidebarOpen) ? localW : 0;
+    const primaryUnfoldOk = () => {
+      const secondaryC = (state.startAsideUsed && state.secondarySidebarOpen) ? secondaryW : 0;
       const endC = (state.endUsed && state.endPanelOpen) ? endW : 0;
       if (state.sheetOpen) {
-        return innerWidth - navW - localC - state.sheetWidth >= 100;
+        return innerWidth - primaryW - secondaryC - state.sheetWidth >= 100;
       }
-      return innerWidth - navW - localC - endC >= MAIN_MIN;
+      return innerWidth - primaryW - secondaryC - endC >= MAIN_MIN;
     };
-    if (state.localAutoFolded && state.localUsed && !state.localSidebarOpen && localUnfoldOk()) {
-      state.localSidebarOpen = true;
-      state.localAutoFolded = false;
+    if (state.secondaryAutoFolded && state.startAsideUsed && !state.secondarySidebarOpen && secondaryUnfoldOk()) {
+      state.secondarySidebarOpen = true;
+      state.secondaryAutoFolded = false;
     }
-    if (state.globalAutoFolded && isFolded() && globalUnfoldOk()) {
+    if (state.primaryAutoFolded && isFolded() && primaryUnfoldOk()) {
       state.cookiePref = 'unfolded';
       writeCookie('unfolded');
-      state.globalAutoFolded = false;
+      state.primaryAutoFolded = false;
     }
 
     const wantedG = !isFolded();                                    // 사용자가 global 펼침 원함?
-    const wantedL = state.localUsed && state.localSidebarOpen;
+    const wantedL = state.startAsideUsed && state.secondarySidebarOpen;
     const wantedE = state.endUsed && state.endPanelOpen;
-    const mainAll = innerWidth - (wantedG?navW:0) - (wantedL?localW:0) - (wantedE?endW:0);
+    const mainAll = innerWidth - (wantedG?primaryW:0) - (wantedL?secondaryW:0) - (wantedE?endW:0);
     const narrow = mainAll < MAIN_MIN;
 
     // narrow 진입/이탈 transition — narrowActive 초기화
@@ -2630,17 +2750,30 @@
       // wide — 사용자 prefs 그대로
       actualG = wantedG; actualL = wantedL; actualE = wantedE;
     } else if (state.narrowActive === 'none') {
-      // cascade auto-close: end → local → global
+      // cascade auto-close: 기본 순서 end → secondary(local) → primary(global)
+      //   단, 사용자가 마지막으로 직접 펼친 영역(lastUserExpanded)은 가장 마지막에 접는다 (최대한 유지).
       let g = wantedG, l = wantedL, e = wantedE;
-      const calcMain = () => innerWidth - (g?navW:0) - (l?localW:0) - (e?endW:0);
-      if (calcMain() < MAIN_MIN && e) e = false;
-      if (calcMain() < MAIN_MIN && l) l = false;
-      if (calcMain() < MAIN_MIN && g) g = false;
+      const calcMain = () => innerWidth - (g?primaryW:0) - (l?secondaryW:0) - (e?endW:0);
+      const collapseOne = (r) => {
+        if (r === 'end' && e) e = false;
+        else if (r === 'secondary' && l) l = false;
+        else if (r === 'primary' && g) g = false;
+      };
+      const baseOrder = ['end', 'secondary', 'primary'];
+      // 사용자가 마지막으로 직접 펼친 영역은 자동 collapse 대상에서 완전히 제외 →
+      // 화면이 최소 사이즈가 되어도 자동으로 접히지 않는다. (나머지만 end→secondary→primary 순으로 접음)
+      const order = lastUserExpanded
+        ? baseOrder.filter(r => r !== lastUserExpanded)
+        : baseOrder;
+      for (const r of order) {
+        if (calcMain() < MAIN_MIN) collapseOne(r);
+        else break;
+      }
       actualG = g; actualL = l; actualE = e;
     } else {
       // mutex — narrowActive 만 visible
-      actualG = state.narrowActive === 'global';
-      actualL = state.narrowActive === 'local';
+      actualG = state.narrowActive === 'primary';
+      actualL = state.narrowActive === 'secondary';
       actualE = state.narrowActive === 'end';
     }
 
@@ -2648,47 +2781,49 @@
     // (sheet 드래그 외에 viewport 변경/사이드바 펼침 등 모든 apply() 시점에 적용)
     // auto-fold 면 state.{local,global}AutoFolded = true 마킹 → 공간 생기면 다시 자동 펼침
     if (state.sheetOpen) {
-      const calcMainVis = () => innerWidth - (actualG ? navW : 0) - (actualL ? localW : 0) - state.sheetWidth;
+      const calcMainVis = () => innerWidth - (actualG ? primaryW : 0) - (actualL ? secondaryW : 0) - state.sheetWidth;
       if (calcMainVis() < 100 && actualL) {
         actualL = false;
-        state.localSidebarOpen = false;
-        state.localAutoFolded = true;
+        state.secondarySidebarOpen = false;
+        state.secondaryAutoFolded = true;
       }
       if (calcMainVis() < 100 && actualG) {
         actualG = false;
         state.cookiePref = 'folded';
         writeCookie('folded');
-        state.globalAutoFolded = true;
+        state.primaryAutoFolded = true;
       }
     }
 
     const folded = !actualG;
     body.classList.toggle('folded', folded);
     body.classList.toggle('narrow', narrow);
-    body.classList.toggle('narrow-show-local', narrow && state.narrowActive === 'local');
+    body.classList.toggle('narrow-show-secondary', narrow && state.narrowActive === 'secondary');
     body.classList.toggle('narrow-show-end',   narrow && state.narrowActive === 'end');
-    body.classList.toggle('narrow-show-global', narrow && state.narrowActive === 'global');
+    body.classList.toggle('narrow-show-primary', narrow && state.narrowActive === 'primary');
     // layout contribution
-    const navContribution = actualG ? navW : 0;
-    const localContribution = actualL ? localW : 0;
+    const primaryContribution = actualG ? primaryW : 0;
+    const secondaryContribution = actualL ? secondaryW : 0;
     const endContribution = actualE ? endW : 0;
-    body.classList.remove('narrow-vw', 'local-auto-folded', 'asides-hidden', 'local-overlay', 'end-overlay', 'end-hidden', 'narrow-show-nav');
-    // no-local-sidebar / no-end-panel = 실제 visibility 기준
-    body.classList.toggle('no-local-sidebar', !actualL);
+    body.classList.remove('narrow-vw', 'secondary-auto-folded', 'asides-hidden', 'secondary-overlay', 'end-overlay', 'end-hidden', 'narrow-show-primary');
+    // no-secondary-sidebar / no-end-panel = 실제 visibility 기준
+    body.classList.toggle('no-secondary-sidebar', !actualL);
     body.classList.toggle('no-end-panel', !actualE);
-    body.classList.toggle('local-disabled', !state.localUsed);
+    body.classList.toggle('secondary-disabled', !state.startAsideUsed);
     body.classList.toggle('end-disabled', !state.endUsed);
     body.classList.toggle('sheet-open', state.sheetOpen);
     body.classList.toggle('header-lnb', state.headerMode === 'lnb');
-    body.classList.toggle('local-view-goals', state.localView === 'goals');
-    body.classList.toggle('local-view-knowledge', state.localView === 'knowledge');
-    body.classList.toggle('local-view-notice', state.localView === 'notice');
+    body.classList.toggle('secondary-view-goals', state.secondaryView === 'goals');
+    body.classList.toggle('secondary-view-knowledge', state.secondaryView === 'knowledge');
+    body.classList.toggle('secondary-view-notice', state.secondaryView === 'notice');
     body.classList.toggle('gnb-goals-expanded', !!state.gnbGoalsExpanded);
+    body.classList.toggle('gnb-contract-expanded', !!state.gnbContractExpanded);
+    body.classList.toggle('gnb-knowledge-expanded', !!state.gnbKnowledgeExpanded);
 
     // sheet 가 열려있고 사이드바가 펼쳐져 있을 때 main MAIN_RESERVE 확보 — sheet width 자동 축소
     // (드래그로 사이드바 자동 접힘 후 사용자가 수동 펼치면 시트가 cap 까지 줄어듦)
     if (state.sheetOpen) {
-      const sheetCap = innerWidth - navContribution - localContribution - MAIN_RESERVE;
+      const sheetCap = innerWidth - primaryContribution - secondaryContribution - MAIN_RESERVE;
       if (sheetCap >= SHEET_MIN && state.sheetWidth > sheetCap) {
         state.sheetWidth = sheetCap;
       }
@@ -2698,10 +2833,10 @@
     //   FULLSCREEN : ① state.sheetWidth >= innerWidth  OR
     //                ② innerWidth - MAIN_RESERVE < SHEET_MIN  OR
     //                ③ 사이드바 + sheet 가 겹쳐서 layout 깨지는 경우 (시각적 overlap 방어)
-    //                → vw 가 작아서 강제 풀 vw 덮음 (globalSidebar 포함)
-    //   EXPANDED   : state.sheetExpanded === true → 사용자 expand 클릭, globalSidebar 제외 영역
+    //                → vw 가 작아서 강제 풀 vw 덮음 (primarySidebar 포함)
+    //   EXPANDED   : state.sheetExpanded === true → 사용자 expand 클릭, primarySidebar 제외 영역
     //   동시 충족 시 FULLSCREEN 우선
-    const sheetVsSidebarsOverlap = (innerWidth - state.sheetWidth) < (navContribution + localContribution);
+    const sheetVsSidebarsOverlap = (innerWidth - state.sheetWidth) < (primaryContribution + secondaryContribution);
     const sheetFullscreen = state.sheetOpen && (
       state.sheetWidth >= innerWidth ||
       innerWidth - MAIN_RESERVE < SHEET_MIN ||
@@ -2712,39 +2847,40 @@
     const sheetEff = sheetFullscreen
       ? innerWidth
       : sheetExpandedMode
-        ? (folded ? innerWidth : innerWidth - state.navbarWidth)
+        ? (folded ? innerWidth : innerWidth - state.primarySidebarWidth)
         : Math.min(state.sheetWidth, innerWidth);
     body.classList.toggle('sheet-fullscreen', sheetFullscreen);
     body.classList.toggle('sheet-expanded', sheetExpandedMode);
     body.classList.toggle('floating-shown', folded && state.floatingShown);
 
     // Sizes via CSS vars
-    root.style.setProperty('--navbar', state.navbarWidth + 'px');
-    root.style.setProperty('--navbar-min', NAV_MIN + 'px');
-    root.style.setProperty('--navbar-max', NAV_MAX + 'px');
-    root.style.setProperty('--floating-navbar-w', state.floatingWidth + 'px');
+    root.style.setProperty('--primary-sidebar', state.primarySidebarWidth + 'px');
+    root.style.setProperty('--primary-sidebar-min', NAV_MIN + 'px');
+    root.style.setProperty('--primary-sidebar-max', NAV_MAX + 'px');
+    root.style.setProperty('--floating-primary-sidebar-w', state.floatingWidth + 'px');
 
     // Asides effective width (drag 범위만 clamp, 뷰포트 의존 없음)
-    const localEff = clampSide(state.localWidth);
+    const secondaryEff = clampSec(state.secondaryWidth);
     const endEff = clampSide(state.endWidth);
-    root.style.setProperty('--local-sidebar', localEff + 'px');
+    root.style.setProperty('--secondary-sidebar', secondaryEff + 'px');
     root.style.setProperty('--end-panel', endEff + 'px');
     root.style.setProperty('--side-min', SIDE_MIN + 'px');
     root.style.setProperty('--side-max', SIDE_MAX + 'px');
+    root.style.setProperty('--secondary-sidebar-max', SEC_MAX + 'px');
     // Sheet effective width (vw 보다 크면 vw 로 clamp)
     root.style.setProperty('--sheet', sheetEff + 'px');
 
     // Labels
-    document.getElementById('w-navbar').textContent = Math.round(state.navbarWidth);
+    document.getElementById('w-primary-sidebar').textContent = Math.round(state.primarySidebarWidth);
     document.getElementById('w-floating').textContent = Math.round(state.floatingWidth);
-    const localLabel = localEff < state.localWidth
-      ? Math.round(localEff) + ' / ' + Math.round(state.localWidth)
-      : String(Math.round(state.localWidth));
-    document.getElementById('w-local').textContent = localLabel;
-    const wLocalLnb = document.getElementById('w-local-lnb');
-    if (wLocalLnb) wLocalLnb.textContent = localLabel;
-    const wLocalLnbGoals = document.getElementById('w-local-lnb-goals');
-    if (wLocalLnbGoals) wLocalLnbGoals.textContent = localLabel;
+    const secondaryLabel = secondaryEff < state.secondaryWidth
+      ? Math.round(secondaryEff) + ' / ' + Math.round(state.secondaryWidth)
+      : String(Math.round(state.secondaryWidth));
+    document.getElementById('w-secondary').textContent = secondaryLabel;
+    const wLocalLnb = document.getElementById('w-secondary-lnb');
+    if (wLocalLnb) wLocalLnb.textContent = secondaryLabel;
+    const wLocalLnbGoals = document.getElementById('w-secondary-lnb-goals');
+    if (wLocalLnbGoals) wLocalLnbGoals.textContent = secondaryLabel;
     document.getElementById('w-end').textContent = endEff < state.endWidth
       ? Math.round(endEff) + ' / ' + Math.round(state.endWidth)
       : Math.round(state.endWidth);
@@ -2778,9 +2914,9 @@
       window.parent.postMessage({
         type: 'fx-state',
         folded,
-        localSidebarOpen: state.localSidebarOpen,
+        secondarySidebarOpen: state.secondarySidebarOpen,
         endPanelOpen: state.endPanelOpen,
-        localUsed: state.localUsed,
+        startAsideUsed: state.startAsideUsed,
         endUsed: state.endUsed,
         sheetOpen: state.sheetOpen,
         headerMode: state.headerMode,
@@ -2790,7 +2926,7 @@
     // Info
     let foldedReason;
     if (narrow) {
-      foldedReason = state.narrowActive === 'global'
+      foldedReason = state.narrowActive === 'primary'
         ? 'unfolded (narrow mutex active)'
         : (folded ? 'folded (narrow cascade)' : 'unfolded (narrow cascade)');
     } else if (folded) {
@@ -2800,14 +2936,14 @@
     }
     const infoParts = [
       `vw: ${innerWidth} · dpr: ${devicePixelRatio}`,
-      `globalSidebar: ${folded ? 'folded 46px' : Math.round(state.navbarWidth) + 'px (' + NAV_MIN + '~' + NAV_MAX + ')'}`,
+      `primarySidebar: ${folded ? 'folded 46px' : Math.round(state.primarySidebarWidth) + 'px (' + NAV_MIN + '~' + NAV_MAX + ')'}`,
       foldedReason,
       state.floatingShown && folded ? `floating: ${Math.round(state.floatingWidth)}px` : null,
-      `localSidebar: ${!state.localUsed
+      `secondarySidebar: ${!state.startAsideUsed
           ? 'disabled (option off)'
           : narrow
-              ? (state.narrowActive === 'local' ? Math.round(localEff) + 'px (mutex active)' : 'hidden (mutex)')
-              : (state.localSidebarOpen ? Math.round(localEff) + 'px' : '—')}`,
+              ? (state.narrowActive === 'secondary' ? Math.round(secondaryEff) + 'px (mutex active)' : 'hidden (mutex)')
+              : (state.secondarySidebarOpen ? Math.round(secondaryEff) + 'px' : '—')}`,
       `endPanel: ${!state.endUsed
           ? 'disabled (option off)'
           : narrow
@@ -2839,7 +2975,7 @@
   };
   // drag 시작 전, 이전 drag state 완전 초기화 (pointerup 누락 대비)
   const clearAllDragState = () => {
-    body.classList.remove('navbar-dragging', 'floating-dragging', 'local-dragging', 'end-dragging', 'sheet-dragging');
+    body.classList.remove('primary-sidebar-dragging', 'floating-dragging', 'secondary-dragging', 'end-dragging', 'sheet-dragging');
     document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
   };
   // 페이지 로드 시 stale dragging state 정리
@@ -2850,18 +2986,25 @@
   //  · vw >= 1024 (wide): 수동 fold/unfold → 쿠키에 저장 (7일)
   //  · vw < 1024 (narrow): auto-fold 가 default. 수동 unfold 는 session 한정 (쿠키 X)
   const toggleFold = () => {
+    let expanded;
     if (state.narrowMode) {
       // narrow mutex — fold 버튼은 global 의 narrowActive 토글
-      state.narrowActive = (state.narrowActive === 'global') ? 'none' : 'global';
+      const willShow = state.narrowActive !== 'primary';
+      state.narrowActive = willShow ? 'primary' : 'none';
+      expanded = willShow;
     } else {
       // wide: cookie 에 상태 저장
       const currentlyFolded = isFolded();
       const next = currentlyFolded ? 'unfolded' : 'folded';
       state.cookiePref = next;
       writeCookie(next);
+      expanded = (next === 'unfolded');
     }
+    // 사용자 명시 펼침 → lastUserExpanded='primary' / 직접 접음 → 보호 해제
+    if (expanded) setLastUserExpanded('primary');
+    else if (lastUserExpanded === 'primary') setLastUserExpanded(null);
     // 사용자 명시 fold/unfold → autoFolded 해제
-    state.globalAutoFolded = false;
+    state.primaryAutoFolded = false;
     state.floatingShown = false;
     apply();
   };
@@ -2876,7 +3019,7 @@
     state.sheetExpanded = !state.sheetExpanded;
     apply();
   });
-  // sheet 타이틀바 fold 버튼 — globalSidebar 토글 (folded 상태에서 fullscreen/expanded 시 노출)
+  // sheet 타이틀바 fold 버튼 — primarySidebar 토글 (folded 상태에서 fullscreen/expanded 시 노출)
   const sheetFoldBtn = document.getElementById('btn-sheet-fold');
   sheetFoldBtn.addEventListener('click', () => {
     // viewport 자동 fullscreen 일 땐 vw 가 좁아서 inline 으로 펼치면 layout 깨짐
@@ -2884,7 +3027,7 @@
     if (body.classList.contains('sheet-fullscreen')) return;
     toggleFold();
   });
-  // hover 시 floating-navbar 표시 (sheet 가 GNB 영역 덮고 있는 상태에서 메뉴 접근)
+  // hover 시 floating-primary-sidebar 표시 (sheet 가 GNB 영역 덮고 있는 상태에서 메뉴 접근)
   sheetFoldBtn.addEventListener('pointerenter', () => {
     if (!isBodyFolded()) return;
     cancelHide();
@@ -2897,9 +3040,9 @@
     if (to && floatingNav.contains(to)) return;
     scheduleHide();
   });
-  // floating-navbar nav-item 클릭 → sheet 닫고 해당 메뉴로 이동
+  // floating-primary-sidebar nav-item 클릭 → sheet 닫고 해당 메뉴로 이동
   // (floatingNav 는 아래에서 declare 되므로 직접 query)
-  document.getElementById('floating-navbar').addEventListener('click', (e) => {
+  document.getElementById('floating-primary-sidebar').addEventListener('click', (e) => {
     const navItem = e.target.closest('.nav-item');
     if (!navItem) return;
     if (state.sheetOpen && (body.classList.contains('sheet-fullscreen') || body.classList.contains('sheet-expanded'))) {
@@ -2915,17 +3058,17 @@
   const dismissExcludeSelector = [
     '#btn-fold',
     '#btn-fold-floating',
-    '.floating-navbar',
+    '.floating-primary-sidebar',
     '#btn-lnb-reopen',           // page-header 의 local 펼침 버튼
     '#btn-page-end-toggle',      // page-header 의 end 토글 버튼
-    '#btn-local-toggle',         // local-sidebar 내부 close 버튼
+    '#btn-secondary-toggle',         // secondary-sidebar 내부 close 버튼
     '#btn-end-toggle',           // end-panel 내부 close 버튼
-    '#btn-local-reopen',         // page-main 엣지 local 펼침 버튼
+    '#btn-secondary-reopen',         // page-main 엣지 local 펼침 버튼
     '#btn-end-reopen',           // page-main 엣지 end 펼침 버튼
     '.side-toggle',              // 사이드바 내부 toggle 류
     '.side-reopen',              // page-main 엣지 reopen 류
-    '.navbar-resizer',           // globalSidebar resize 핸들
-    '.floating-navbar-resizer',  // floating navbar resize 핸들
+    '.primary-sidebar-resizer',           // primarySidebar resize 핸들
+    '.floating-primary-sidebar-resizer',  // floating primary-sidebar resize 핸들
     '.side-resizer',             // local / end resize 핸들
   ].join(', ');
   document.addEventListener('pointerdown', (e) => {
@@ -2948,44 +3091,58 @@
   });
   // narrow 일 때는 narrowActive (mutex), wide 일 때는 사용자 prefs 토글
   const toggleLocal = () => {
+    let expanded;
     if (state.narrowMode) {
-      state.narrowActive = (state.narrowActive === 'local') ? 'none' : 'local';
+      const willShow = state.narrowActive !== 'secondary';
+      state.narrowActive = willShow ? 'secondary' : 'none';
+      expanded = willShow;
     } else {
-      state.localSidebarOpen = !state.localSidebarOpen;
+      state.secondarySidebarOpen = !state.secondarySidebarOpen;
+      expanded = state.secondarySidebarOpen;
     }
-    state.localAutoFolded = false;  // 사용자 명시 → auto 해제
+    if (expanded) setLastUserExpanded('secondary');
+    else if (lastUserExpanded === 'secondary') setLastUserExpanded(null);
+    state.secondaryAutoFolded = false;  // 사용자 명시 → auto 해제
     apply();
   };
   const openLocal = () => {
-    if (state.narrowMode) state.narrowActive = 'local';
-    else state.localSidebarOpen = true;
-    state.localAutoFolded = false;  // 사용자 명시 → auto 해제
+    if (state.narrowMode) state.narrowActive = 'secondary';
+    else state.secondarySidebarOpen = true;
+    setLastUserExpanded('secondary');   // 사용자 명시 펼침
+    state.secondaryAutoFolded = false;  // 사용자 명시 → auto 해제
     apply();
   };
   const toggleEnd = () => {
+    let expanded;
     if (state.narrowMode) {
-      state.narrowActive = (state.narrowActive === 'end') ? 'none' : 'end';
+      const willShow = state.narrowActive !== 'end';
+      state.narrowActive = willShow ? 'end' : 'none';
+      expanded = willShow;
     } else {
       state.endPanelOpen = !state.endPanelOpen;
+      expanded = state.endPanelOpen;
     }
+    if (expanded) setLastUserExpanded('end');
+    else if (lastUserExpanded === 'end') setLastUserExpanded(null);
     apply();
   };
   const openEnd = () => {
     if (state.narrowMode) state.narrowActive = 'end';
     else state.endPanelOpen = true;
+    setLastUserExpanded('end');   // 사용자 명시 펼침
     apply();
   };
-  document.getElementById('btn-local-toggle').addEventListener('click', toggleLocal);
+  document.getElementById('btn-secondary-toggle').addEventListener('click', toggleLocal);
   document.getElementById('btn-end-toggle').addEventListener('click', toggleEnd);
-  document.getElementById('btn-local-reopen').addEventListener('click', openLocal);
+  document.getElementById('btn-secondary-reopen').addEventListener('click', openLocal);
   document.getElementById('btn-end-reopen').addEventListener('click', openEnd);
   document.getElementById('btn-lnb-reopen').addEventListener('click', openLocal);
   document.getElementById('btn-page-end-toggle').addEventListener('click', toggleEnd);
 
-  // ─── globalSidebar nav-item 클릭 ───
+  // ─── primarySidebar nav-item 클릭 ───
   // goals-parent  → 펼침 토글 (chevron right ↔ down, sub-items show/hide)
-  // goals-all     → localView='goals'
-  // knowledge-docs → localView='knowledge'
+  // goals-all     → secondaryView='goals'
+  // knowledge-docs → secondaryView='knowledge'
   // goals-my, goals-members → 링크 없음 (hover only)
   const gnbToView = (key) => {
     if (key === 'goals-all') return 'goals';
@@ -3006,30 +3163,62 @@
         apply();
         return;
       }
+      if (key === 'contract-parent') {
+        state.gnbContractExpanded = !state.gnbContractExpanded;
+        apply();
+        return;
+      }
+      if (key === 'knowledge-parent') {
+        state.gnbKnowledgeExpanded = !state.gnbKnowledgeExpanded;
+        apply();
+        return;
+      }
       const targetView = gnbToView(key);
       if (targetView) {
-        state.localView = targetView;
-        // notice 진입 시 localSidebar 폭을 max 로 자동 확장
-        if (targetView === 'notice') state.localWidth = SIDE_MAX;
+        state.secondaryView = targetView;
+        // notice 진입 시 secondarySidebar 폭을 max 로 자동 확장
+        if (targetView === 'notice') state.secondaryWidth = SEC_MAX;
         syncGnbActive(key);
+        if (window.__setSidebarTitle) window.__setSidebarTitle({ knowledge: '모든 문서', goals: '전체 목표', notice: '공지' }[targetView]);
         apply();
       }
     });
   });
   // 초기 active 동기화
-  if (state.localView === 'goals') syncGnbActive('goals-all');
-  else if (state.localView === 'notice') syncGnbActive('notice');
+  if (state.secondaryView === 'goals') syncGnbActive('goals-all');
+  else if (state.secondaryView === 'notice') syncGnbActive('notice');
   else syncGnbActive('knowledge-docs');
+
+  // 페이지 타이틀(단일) — 패널 모드: '지식 문서' / 사이드바 모드: 현재 선택 항목
+  const pageTitleEl = document.querySelector('.page-header > .page-header__title');
+  const viewTitle = { knowledge: '모든 문서', goals: '전체 목표', notice: '공지' };
+  let sidebarTitle = viewTitle[state.secondaryView] || '모든 문서';
+  const refreshPageTitle = () => { if (pageTitleEl) pageTitleEl.textContent = (state.headerMode === 'start' ? '지식 문서' : sidebarTitle); };
+  window.__refreshPageTitle = refreshPageTitle;
+  window.__setSidebarTitle = (t) => { if (t) { sidebarTitle = t; refreshPageTitle(); } };
+  // 세컨더리 사이드바(knowledge) 메뉴 클릭 → active + 페이지 타이틀 갱신
+  document.querySelectorAll('.secondary-sidebar__content.lnb[data-view="knowledge"] .secondary-sidebar__menu').forEach(menu => {
+    menu.querySelectorAll('.nav-item:not(.nav-item--size)').forEach(item => {
+      item.addEventListener('click', () => {
+        menu.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+        const label = item.querySelector('.nav-item__label');
+        if (label) window.__setSidebarTitle(label.textContent.trim());
+      });
+    });
+  });
+  // 초기 타이틀
+  refreshPageTitle();
 
   // ─── parent(index.html)로부터 toggle 명령 수신 ───
   window.addEventListener('message', (e) => {
     if (!e.data || e.data.type !== 'fx-toggle') return;
     switch (e.data.target) {
       case 'fold': toggleFold(); break;
-      // localSidebar / endPanel 은 옵션 → toolbar 에서는 사용/미사용 토글 (접기 아님)
-      case 'local':
-        state.localUsed = !state.localUsed;
-        if (!state.localUsed && state.narrowActive === 'local') state.narrowActive = 'none';
+      // secondarySidebar / endPanel 은 옵션 → toolbar 에서는 사용/미사용 토글 (접기 아님)
+      case 'startaside':
+        state.startAsideUsed = !state.startAsideUsed;
+        if (!state.startAsideUsed && state.narrowActive === 'secondary') state.narrowActive = 'none';
         apply();
         break;
       case 'end':
@@ -3038,28 +3227,30 @@
         apply();
         break;
       case 'sheet': state.sheetOpen = !state.sheetOpen; apply(); break;
-      case 'local-none':
-        state.localSidebarOpen = false;
+      case 'secondary-none':
+        state.secondarySidebarOpen = false;
         apply();
         break;
       case 'header-start':
-        state.localSidebarOpen = true;
+        state.secondarySidebarOpen = true;
         state.headerMode = 'start';
+        if (window.__refreshPageTitle) window.__refreshPageTitle();
         apply();
         break;
       case 'header-lnb':
-        state.localSidebarOpen = true;
+        state.secondarySidebarOpen = true;
         state.headerMode = 'lnb';
+        if (window.__refreshPageTitle) window.__refreshPageTitle();
         apply();
         break;
     }
   });
 
-  // ─── Floating navbar hover (folded state) ───
+  // ─── Floating primary-sidebar hover (folded state) ───
   const appShell = document.getElementById('app-shell');
   const foldBtn = document.getElementById('btn-fold');
-  const floatingNav = document.getElementById('floating-navbar');
-  const navbarEl = document.getElementById('app-navbar');
+  const floatingNav = document.getElementById('floating-primary-sidebar');
+  const primarySidebarEl = document.getElementById('primary-sidebar');
 
   let hoverTimer;
   const isFloatingDragging = () => body.classList.contains('floating-dragging');
@@ -3099,7 +3290,9 @@
 
   // ─── 공통 drag 헬퍼 ───
   // document-level pointermove/pointerup 로 캡처 누락 없이 cleanup 보장
-  const attachDrag = (resEl, kind, getStartW, setW, computeW, minV, maxV, labelFn) => {
+  // collapseFn 지정 시: min 보다 COLLAPSE_DRAG 이상 더 끌면 해당 영역을 접음 (min 에서 한번 걸린 뒤 계속 줄이면 collapse)
+  const COLLAPSE_DRAG = 40;
+  const attachDrag = (resEl, kind, getStartW, setW, computeW, minV, maxV, labelFn, collapseFn) => {
     resEl.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       clearAllDragState();
@@ -3107,13 +3300,6 @@
       body.classList.add(kind + '-dragging');
       const startX = e.clientX;
       const startW = getStartW();
-      const onMove = (ev) => {
-        let w = computeW(startW, ev.clientX - startX);
-        w = Math.max(minV, Math.min(maxV, w));
-        setW(w);
-        apply();
-        showTT(kind, labelFn(Math.round(w)), ev.clientX, ev.clientY);
-      };
       const onUp = () => {
         resEl.classList.remove('dragging');
         body.classList.remove(kind + '-dragging');
@@ -3121,32 +3307,50 @@
         document.removeEventListener('pointerup', onUp);
         document.removeEventListener('pointercancel', onUp);
       };
+      const onMove = (ev) => {
+        const raw = computeW(startW, ev.clientX - startX);
+        if (collapseFn && raw < minV - COLLAPSE_DRAG) {
+          // collapse 전에 현재 폭(=min)을 transition 활성 상태로 먼저 커밋해야
+          // width 0 으로의 변화가 애니메이션됨 (안그러면 dragging의 transition:none 때문에 확 사라짐)
+          setW(minV); apply();
+          onUp();                       // dragging 클래스 제거 → transition 복원
+          void resEl.offsetWidth;       // 강제 reflow: "transition 활성 + width=min" 상태를 커밋
+          collapseFn();                 // 이제 width 0 변화가 부드럽게 애니메이션됨
+          return;
+        }
+        const w = Math.max(minV, Math.min(maxV, raw));
+        setW(w);
+        apply();
+        showTT(kind, labelFn(Math.round(w)), ev.clientX, ev.clientY);
+      };
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
       document.addEventListener('pointercancel', onUp);
     });
   };
 
-  // ─── AppNavBar resize (unfolded) ───
-  const navRes = document.getElementById('navbar-resizer');
-  navRes.addEventListener('pointerdown', (e) => {
+  // ─── PrimarySidebar resize (unfolded) ───
+  const primaryRes = document.getElementById('primary-sidebar-resizer');
+  primaryRes.addEventListener('pointerdown', (e) => {
     if (body.classList.contains('folded')) { e.stopPropagation(); return; }
   }, true);
-  attachDrag(navRes, 'navbar',
-    () => state.navbarWidth,
-    (w) => state.navbarWidth = w,
+  attachDrag(primaryRes, 'primary-sidebar',
+    () => state.primarySidebarWidth,
+    (w) => state.primarySidebarWidth = w,
     (sw, dx) => sw + dx,
     NAV_MIN, NAV_MAX,
-    (w) => String(w));
+    (w) => String(w),
+    () => { if (!isFolded()) toggleFold(); });   // min 이하로 더 끌면 fold
 
-  // ─── localSidebar resize (우측 엣지) — drag 하면 userModified 로 마크 ───
-  const localRes = document.getElementById('local-resizer');
-  attachDrag(localRes, 'local',
-    () => state.localWidth,
-    (w) => { state.localWidth = w; },
+  // ─── secondarySidebar resize (우측 엣지) — drag 하면 userModified 로 마크 ───
+  const secondaryRes = document.getElementById('secondary-resizer');
+  attachDrag(secondaryRes, 'secondary',
+    () => state.secondaryWidth,
+    (w) => { state.secondaryWidth = w; },
     (sw, dx) => sw + dx,
-    SIDE_MIN, SIDE_MAX,
-    (w) => String(w));
+    SIDE_MIN, SEC_MAX,
+    (w) => String(w),
+    () => toggleLocal());   // min 이하로 더 끌면 collapse
 
   // ─── endPanel resize (좌측 엣지 — drag left = expand) ───
   // endPanel 는 narrow-vw 에서 floating 이 되며 그 상태에서도 resize 가능
@@ -3156,10 +3360,11 @@
     (w) => state.endWidth = w,
     (sw, dx) => sw - dx,   // 왼쪽 드래그 = expand
     SIDE_MIN, SIDE_MAX,
-    (w) => String(w));
+    (w) => String(w),
+    () => toggleEnd());   // min 이하로 더 끌면 collapse
 
-  // ─── Floating navbar resize ───
-  const floatRes = document.getElementById('floating-navbar-resizer');
+  // ─── Floating primary-sidebar resize ───
+  const floatRes = document.getElementById('floating-primary-sidebar-resizer');
   floatRes.addEventListener('pointerdown', () => cancelHide(), true);
   attachDrag(floatRes, 'floating',
     () => state.floatingWidth,
@@ -3200,46 +3405,46 @@
     (w) => state.sheetWidth = w,
     (sw, dx) => {
       let w = sw - dx;
-      const localFullW = clampSide(state.localWidth);
-      const navFullW = state.navbarWidth;
+      const secondaryFullW = clampSec(state.secondaryWidth);
+      const primaryFullW = state.primarySidebarWidth;
       const computeCap = () => {
-        const nav = isFolded() ? 0 : navFullW;
-        const loc = (state.localUsed && state.localSidebarOpen) ? localFullW : 0;
+        const nav = isFolded() ? 0 : primaryFullW;
+        const loc = (state.startAsideUsed && state.secondarySidebarOpen) ? secondaryFullW : 0;
         return innerWidth - nav - loc - MAIN_RESERVE;
       };
 
       // 키움 → cascade fold (local → global)
-      if (w > computeCap() && state.localUsed && state.localSidebarOpen) {
-        state.localSidebarOpen = false;
+      if (w > computeCap() && state.startAsideUsed && state.secondarySidebarOpen) {
+        state.secondarySidebarOpen = false;
         sheetDragFoldedLocal = true;
-        state.localAutoFolded = true;
+        state.secondaryAutoFolded = true;
       }
       if (w > computeCap() && !isFolded()) {
         state.cookiePref = 'folded';
         writeCookie('folded');
         sheetDragFoldedGlobal = true;
-        state.globalAutoFolded = true;
+        state.primaryAutoFolded = true;
       }
 
       // 줄임 → drag 로 접힌 거 cascade unfold (global → local)
       // global 부터 펼침 시도: global 펼친 후의 cap 이 w 보다 크면 펼쳐도 OK
       if (sheetDragFoldedGlobal && isFolded()) {
-        const loc = (state.localUsed && state.localSidebarOpen) ? localFullW : 0;
-        const capIfGlobalUnfolded = innerWidth - navFullW - loc - MAIN_RESERVE;
+        const loc = (state.startAsideUsed && state.secondarySidebarOpen) ? secondaryFullW : 0;
+        const capIfGlobalUnfolded = innerWidth - primaryFullW - loc - MAIN_RESERVE;
         if (w <= capIfGlobalUnfolded) {
           state.cookiePref = 'unfolded';
           writeCookie('unfolded');
           sheetDragFoldedGlobal = false;
-          state.globalAutoFolded = false;
+          state.primaryAutoFolded = false;
         }
       }
-      if (sheetDragFoldedLocal && state.localUsed && !state.localSidebarOpen) {
-        const nav = isFolded() ? 0 : navFullW;
-        const capIfLocalUnfolded = innerWidth - nav - localFullW - MAIN_RESERVE;
+      if (sheetDragFoldedLocal && state.startAsideUsed && !state.secondarySidebarOpen) {
+        const nav = isFolded() ? 0 : primaryFullW;
+        const capIfLocalUnfolded = innerWidth - nav - secondaryFullW - MAIN_RESERVE;
         if (w <= capIfLocalUnfolded) {
-          state.localSidebarOpen = true;
+          state.secondarySidebarOpen = true;
           sheetDragFoldedLocal = false;
-          state.localAutoFolded = false;
+          state.secondaryAutoFolded = false;
         }
       }
 
