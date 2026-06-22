@@ -1101,6 +1101,9 @@
   }
   .side-resizer.secondary { right: -4px; }
   .side-resizer.end { left: -4px; }
+  /* StartPanel(패널 모드) 리사이저는 타이틀바(46) 아래에서 시작 — 엔드패널처럼 타이틀바를 덮지 않음.
+     (StartPanel aside 는 0 부터지만 콘텐츠는 page-header 아래 46 부터 시작하므로) */
+  body:not(.header-lnb) #secondary-resizer { top: var(--page-header); }
   .side-resizer::after {
     content: "";
     position: absolute;
