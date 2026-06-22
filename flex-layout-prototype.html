@@ -494,16 +494,15 @@
     border-radius: 5px;
     cursor: pointer;
     color: #535353;
-    display: none;
+    display: grid;   /* EndPanel 트리거 — page-header 우측 끝에 항상 노출 (Figma 12663-52566: PageTitlebar endSlot, panel-right) */
     place-items: center;
     padding: 0;
     flex-shrink: 0;
     transition: background 120ms, color 120ms;
   }
   .page-header__end-toggle:hover { background: rgba(0,0,0,.05); color: var(--text); }
-  /* endPanel 접힘 → page-header 우측 끝에 reopen 토글 노출 (양 모드 공통, Figma EndPanel spec) */
-  body.no-end-panel:not(.end-disabled) .page-header__end-toggle,
-  body.asides-hidden:not(.end-disabled) .page-header__end-toggle { display: grid; }
+  /* endPanel 미사용(option off) 시에만 트리거 숨김 */
+  body.end-disabled .page-header__end-toggle { display: none; }
   /* endPanel reopen 은 page-header 우측 토글로 통일 → PageMain 엣지 floating reopen 은 양 모드 모두 숨김 */
   body .side-reopen.end { display: none !important; }
 
