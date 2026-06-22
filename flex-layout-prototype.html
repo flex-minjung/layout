@@ -462,6 +462,9 @@
   /* secondarySidebar 모드 → 단일 타이틀 표시 (breadcrumb 제거) */
   body.header-lnb .page-header > .page-header__title { display: inline-flex; }
   body.header-lnb .page-header__breadcrumb { display: none !important; }
+  /* 타이틀 옆 PageMain 가로값 — lnb 모드에서 breadcrumb-size 대체 (start 모드는 breadcrumb 가 표시) */
+  .page-header__title-size { display: none; margin-left: 0; }
+  body.header-lnb .page-header > .page-header__title-size { display: inline-flex; }
 
   /* 트리거 아이콘 사이/뒤 구분선 제거 + 간격 2px — Figma 스펙 (라인 없음) */
   body.header-lnb.no-secondary-sidebar .page-header__lnb-reopen,
@@ -2101,6 +2104,7 @@
               <svg class="ico ico-fx"><use href="#i-bulletlist"/></svg>
             </button>
             <span class="page-header__title">타이틀</span>
+            <span class="breadcrumb-size page-header__title-size">(<span id="w-main-title">—</span>)</span>
             <nav class="page-header__breadcrumb breadcrumb-knowledge" aria-label="Breadcrumb" data-view="knowledge">
               <span class="breadcrumb-item" title="지식 관리">
                 <svg class="ico"><use href="#i-text-book"/></svg>
@@ -2738,6 +2742,9 @@
     const wantedE = state.endUsed && state.endPanelOpen;
     const mainAll = innerWidth - (wantedG?primaryW:0) - (wantedL?secondaryW:0) - (wantedE?endW:0);
     const narrow = mainAll < MAIN_MIN;
+    // 페이지 타이틀바 수치 — 400 기준 narrow 판정에 쓰이는 mainAll 값 (실측 아님)
+    const wMainTitleEl = document.getElementById('w-main-title');
+    if (wMainTitleEl) wMainTitleEl.textContent = Math.round(mainAll);
 
     // narrow 진입/이탈 transition — narrowActive 초기화
     if (narrow !== state.narrowMode) {
