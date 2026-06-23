@@ -1234,6 +1234,7 @@
   .pm-table tbody td:last-child { padding-right: 16px; }
   .pm-table {
     width: 100%;
+    min-width: 600px;   /* PageMain 이 좁아져 이 폭보다 줄면 pm-table-wrap 이 가로 스크롤 */
     border-collapse: collapse;
     font-size: 14px;
   }
@@ -1373,9 +1374,7 @@
   /* narrow 에서도 primarySidebar 접힘 시 hover 로 floating-primary-sidebar 노출 (wide 와 동일) */
   /* narrow 에서 lnb-reopen 은 local 이 visible 일 땐 숨김 (이미 펼쳐져 있으니 redundant) */
   body.narrow.narrow-show-secondary .page-header__lnb-reopen { display: none !important; }
-  /* narrow 에서 page-main 내부 콘텐츠가 좁으면 가로 스크롤 (pm-table-wrap 이 처리) */
-  body.narrow .pm-table-wrap { overflow-x: auto; }
-  body.narrow .pm-table { min-width: 600px; }
+  /* page-main 내부 콘텐츠(table)가 폭보다 넓으면 항상 가로 스크롤 — pm-table-wrap(overflow:auto) + pm-table(min-width:600) 이 처리. narrow 게이트 없이 모든 폭에서 동작 */
   /* narrow 에서 lnb-reopen 은 항상 보임 (active 든 inactive 든 토글 액세스용) */
   body.narrow.header-lnb:not(.secondary-disabled) .page-header__lnb-reopen { display: grid; }
 
