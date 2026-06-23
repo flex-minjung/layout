@@ -2571,24 +2571,16 @@
   const root = document.documentElement;
   const body = document.body;
 
-  // 쿠키 유틸 (실제 쿠키 대신 localStorage로 시뮬레이션 + 만료)
+  // PrimarySidebar fold 의도 — 세션 한정(탭/브라우저 닫힐 때까지)으로 저장.
+  //   "사용자가 접은 건 자동으로 펼치지 않는다" 정책이 세션 동안만 기억되도록 sessionStorage 사용.
   const COOKIE_KEY = 'APP_SHELL_GNB_FOLDED';
-  const COOKIE_TTL = 7 * 24 * 60 * 60 * 1000;  // 7일
   const readCookie = () => {
-    try {
-      const raw = localStorage.getItem(COOKIE_KEY);
-      if (!raw) return null;
-      const { value, expires } = JSON.parse(raw);
-      if (Date.now() > expires) { localStorage.removeItem(COOKIE_KEY); return null; }
-      return value;
-    } catch(e) { return null; }
+    try { return sessionStorage.getItem(COOKIE_KEY) || null; } catch(e) { return null; }
   };
   const writeCookie = (value) => {
-    localStorage.setItem(COOKIE_KEY, JSON.stringify({
-      value, expires: Date.now() + COOKIE_TTL
-    }));
+    try { sessionStorage.setItem(COOKIE_KEY, value); } catch(e) {}
   };
-  const clearCookie = () => localStorage.removeItem(COOKIE_KEY);
+  const clearCookie = () => { try { sessionStorage.removeItem(COOKIE_KEY); } catch(e) {} };
 
   // PrimarySidebar 자동 접힘: viewport 기반
   const NAV_FOLD_BREAK = 1024;   // 미만 PrimarySidebar 자동 접힘 (vw < 1024)
@@ -2626,22 +2618,18 @@
   };
   const savePersisted = (s) => {
     try {
+      // 영구(localStorage) — 위젯 크기/뷰/사용여부 등 세션 무관 환경설정
       const persistable = {
         primarySidebarWidth: s.primarySidebarWidth,
         floatingWidth: s.floatingWidth,
         secondaryWidth: s.secondaryWidth,
         endWidth: s.endWidth,
         sheetWidth: s.sheetWidth,
-        secondarySidebarOpen: s.secondarySidebarOpen,
-        endPanelOpen: s.endPanelOpen,
         startAsideUsed: s.startAsideUsed,
         endUsed: s.endUsed,
         sheetOpen: s.sheetOpen,
         sheetExpanded: s.sheetExpanded,
-        secondaryAutoFolded: s.secondaryAutoFolded,
-        primaryAutoFolded: s.primaryAutoFolded,
         headerMode: s.headerMode,
-        cookiePref: s.cookiePref,
         secondaryView: s.secondaryView,
         gnbGoalsExpanded: s.gnbGoalsExpanded,
         gnbContractExpanded: s.gnbContractExpanded,
@@ -2649,26 +2637,50 @@
       };
       localStorage.setItem(PERSIST_KEY, JSON.stringify(persistable));
     } catch (e) {}
+    saveSessionIntent(s);
+  };
+
+  // 세션 한정(탭/브라우저 닫힐 때까지) — 400 narrow 자동 접고/펼침의 "사용자 의도" 기억:
+  //   접고/펼친 open 상태 + auto/user fold 구분 플래그 + global fold(cookiePref).
+  //   새로고침엔 유지되지만 탭/브라우저를 닫으면 기본값으로 리셋된다.
+  const SESSION_INTENT_KEY = 'FX_SESSION_INTENT';
+  const loadSessionIntent = () => {
+    try {
+      const raw = sessionStorage.getItem(SESSION_INTENT_KEY);
+      return raw ? (JSON.parse(raw) || {}) : {};
+    } catch (e) { return {}; }
+  };
+  const saveSessionIntent = (s) => {
+    try {
+      sessionStorage.setItem(SESSION_INTENT_KEY, JSON.stringify({
+        cookiePref: s.cookiePref,
+        secondarySidebarOpen: s.secondarySidebarOpen,
+        endPanelOpen: s.endPanelOpen,
+        secondaryAutoFolded: s.secondaryAutoFolded,
+        primaryAutoFolded: s.primaryAutoFolded,
+      }));
+    } catch (e) {}
   };
   const persisted = loadPersisted();
+  const sessionIntent = loadSessionIntent();
 
   const state = {
-    cookiePref: persisted.cookiePref ?? null,
+    cookiePref: sessionIntent.cookiePref ?? null,
     primarySidebarWidth: persisted.primarySidebarWidth ?? 220,
     floatingWidth: persisted.floatingWidth ?? 220,
     secondaryWidth: persisted.secondaryWidth ?? 220,
     endWidth: persisted.endWidth ?? 220,
     sheetWidth: persisted.sheetWidth ?? 680,
-    secondarySidebarOpen: persisted.secondarySidebarOpen ?? true,
-    endPanelOpen: persisted.endPanelOpen ?? true,
+    secondarySidebarOpen: sessionIntent.secondarySidebarOpen ?? true,
+    endPanelOpen: sessionIntent.endPanelOpen ?? true,
     startAsideUsed: persisted.startAsideUsed ?? true,    // startAside 사용/미사용 (옵션 — primarySidebar 는 필수). 타입은 headerMode(lnb=secondarySidebar / start=startPanel)
     endUsed: persisted.endUsed ?? true,        // endPanel 사용/미사용 (옵션)
     sheetOpen: persisted.sheetOpen ?? false,
     sheetExpanded: persisted.sheetExpanded ?? false,  // 사용자 expand 클릭 의도 → sheet-expanded 모드
     // auto-fold 추적: true 면 시스템이 접은 것 → 공간 생기면 자동으로 다시 펼침
     //                 false 면 사용자가 직접 접은 것 → 자동으로 펼치지 않음
-    secondaryAutoFolded: persisted.secondaryAutoFolded ?? false,
-    primaryAutoFolded: persisted.primaryAutoFolded ?? false,
+    secondaryAutoFolded: sessionIntent.secondaryAutoFolded ?? false,
+    primaryAutoFolded: sessionIntent.primaryAutoFolded ?? false,
     floatingShown: false,
     headerMode: persisted.headerMode ?? 'lnb',
     // narrow mutex: mainAll < 400 일 때 global/local/end 중 하나만 보임
