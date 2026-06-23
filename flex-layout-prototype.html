@@ -13,8 +13,8 @@
     --floating-primary-sidebar-w: 220px; /* floating 기본 폭 (resize 가능, min 180 max 300) */
 
     --page-header: 46px;
-    --secondary-sidebar: 220px;       /* min 180 / default 220 / max 300 */
-    --secondary-sidebar-max: 300px;
+    --secondary-sidebar: 220px;       /* min 180 / default 220 / max 360 */
+    --secondary-sidebar-max: 360px;
     --end-panel: 220px;
     --side-min: 180px;
     --side-max: 360px;                /* endPanel max */
@@ -595,7 +595,7 @@
     max-width: var(--side-max);
     flex-shrink: 0;
   }
-  .secondary-sidebar { max-width: var(--secondary-sidebar-max); }   /* secondary 만 max 300 (end 는 360 유지) */
+  .secondary-sidebar { max-width: var(--secondary-sidebar-max); }   /* StartAside max 360 (end 도 360) */
   .secondary-sidebar,
   .end-panel {
     padding: 0;
@@ -1680,6 +1680,10 @@
     align-items: center;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
+    /* .primary-sidebar 등 영역 셀렉터와 클래스명이 겹쳐 너비를 물려받지 않도록 리셋 */
+    width: auto;
+    min-width: 0;
+    max-width: none;
   }
   .resize-tooltip .ico { display: none; }
   body.primary-sidebar-dragging .resize-tooltip.primary-sidebar,
@@ -2588,12 +2592,12 @@
   const MAIN_MIN = 400;          // mainAll ≤ 이 값 → narrow mutex 모드 (셋 중 하나만 visible)
   const NAV_MIN = 180, NAV_MAX = 300;     // primary + floating sidebar (max 300)
   const SIDE_MIN = 180, SIDE_MAX = 360;   // endPanel (max 360)
-  const SEC_MAX = 300;                    // secondarySidebar max (end 와 분리 — 300)
+  const SEC_MAX = 360;                    // StartAside(secondarySidebar/StartPanel) max — 360
   const SHEET_MIN = 500, SHEET_MAX = 900;
   const MAIN_RESERVE = 220;  // sheet 사이즈 변경 시 main 영역 최소 확보 폭
   // aside effective clamp (뷰포트 의존 없이 drag 범위만 enforce)
   const clampSide = (userW) => Math.max(SIDE_MIN, Math.min(SIDE_MAX, userW));   // endPanel
-  const clampSec  = (userW) => Math.max(SIDE_MIN, Math.min(SEC_MAX,  userW));   // secondarySidebar
+  const clampSec  = (userW) => Math.max(SIDE_MIN, Math.min(SEC_MAX,  userW));   // secondarySidebar / StartPanel
 
   // 쿠키 값: 'folded' | 'unfolded' | null
   // cookiePref: wide viewport 에서만 의미 있는 persistent 상태
