@@ -1511,15 +1511,12 @@
   body.folded.sheet-fullscreen .sheet__fold-sep,
   body.folded.sheet-expanded .sheet__fold-sep { display: block !important; }
 
-  /* sheet 브레드크럼 — 기본 hide, fullscreen/expanded 일 때만 노출 (view 별 토글) */
+  /* sheet 브레드크럼 — 기본 hide, expanded(드래그 확장) 일 때만 노출 (view 별 토글)
+     전체보기(fullscreen) 는 접힘 상태와 동일하게 타이틀 유지 */
   .sheet__breadcrumb { display: none !important; }
-  body.sheet-fullscreen .sheet .sheet__title,
   body.sheet-expanded .sheet .sheet__title { display: none; }
-  body.sheet-fullscreen .sheet .sheet__breadcrumb[data-view="knowledge"],
   body.sheet-expanded .sheet .sheet__breadcrumb[data-view="knowledge"] { display: inline-flex !important; }
-  body.sheet-fullscreen.secondary-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"],
   body.sheet-expanded.secondary-view-goals .sheet .sheet__breadcrumb[data-view="knowledge"] { display: none !important; }
-  body.sheet-fullscreen.secondary-view-goals .sheet .sheet__breadcrumb[data-view="goals"],
   body.sheet-expanded.secondary-view-goals .sheet .sheet__breadcrumb[data-view="goals"] { display: inline-flex !important; }
   .sheet__body {
     flex: 1; min-height: 0;
