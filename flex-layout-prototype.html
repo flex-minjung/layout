@@ -1503,8 +1503,7 @@
   body.sheet-fullscreen .sheet__btn .ico-collapse,
   body.sheet-expanded .sheet__btn .ico-collapse { display: block; }
   /* viewport 에 의한 자동 fullscreen 일 때 expand 버튼 숨김 (사용자가 수동으로 줄일 수 없는 상태) */
-  body.sheet-fullscreen #btn-sheet-expand,
-  body.sheet-fullscreen #btn-sheet-expand + .sheet__sep { display: none !important; }
+  body.sheet-fullscreen #btn-sheet-expand { display: none !important; }
   /* fx Separator — 1px x 16px, --border/tertiary */
   .sheet__sep {
     width: 1px; height: 16px;
@@ -2550,7 +2549,6 @@
             <svg class="ico ico-expand"><use href="#i-expand-2directions"/></svg>
             <svg class="ico ico-collapse"><use href="#i-collapse-2directions"/></svg>
           </button>
-          <span class="sheet__sep" aria-hidden="true"></span>
           <button class="sheet__btn" id="btn-sheet-close" title="Close sheet" aria-label="Close sheet">
             <svg class="ico"><use href="#i-close"/></svg>
           </button>
