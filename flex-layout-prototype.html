@@ -1389,10 +1389,19 @@
     box-shadow: var(--shadow-dialog);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;   /* resizer hover 가 sheet 밖으로 나가도 안 잘리도록 — 콘텐츠 클립은 __inner 가 담당 */
     z-index: 50;
     transform: translateX(100%);
     transition: transform 220ms ease;
+  }
+  /* 콘텐츠(타이틀바+바디)만 클립. resizer 는 이 래퍼 밖이라 클립 안 됨 (floating-primary-sidebar 와 동일 패턴) */
+  .sheet__inner {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
   body.sheet-open .sheet {
     transform: translateX(0);
@@ -2495,6 +2504,7 @@
       <!-- Sheet (optional overlay) -->
       <aside class="sheet" id="sheet">
         <div class="sheet-resizer" id="sheet-resizer"></div>
+        <div class="sheet__inner">
         <div class="sheet__titlebar">
           <!-- primarySidebar 접힘 + sheet fullscreen/expanded 시에만 노출 — 클릭 시 GNB 펼침 -->
           <button class="sheet__btn sheet__fold-btn" id="btn-sheet-fold" title="Open primarySidebar" aria-label="Open primarySidebar">
@@ -2551,6 +2561,7 @@
         </div>
         <div class="sheet__body">
           <div class="region">SheetBody</div>
+        </div>
         </div>
       </aside>
     </div>
