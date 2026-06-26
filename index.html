@@ -136,8 +136,6 @@
     <button data-fx="end" class="active">endPanel</button>
     <button data-fx="sheet">Sheet</button>
   </span>
-  <span id="dims" class="label">L:— · E:— · M:—</span>
-  <span class="label">layout prototype</span>
 </nav>
 
 <script>
@@ -195,20 +193,6 @@
     });
     // startAside 가 off 면 하위 타입(사이드바/패널) 선택은 비활성
     document.getElementById('seg-startaside').classList.toggle('disabled', !s.startAsideUsed);
-    // width/size 표시 업데이트 (flex 프레임에서 전달한 값 사용)
-    try {
-      const dims = document.getElementById('dims');
-      if (dims) {
-        const l = s.localEff ?? s.localWidth ?? null;
-        const e2 = s.endEff ?? s.endWidth ?? null;
-        const m = s.mainWidth ?? null;
-        const parts = [];
-        if (l != null) parts.push('L:' + l + 'px');
-        if (e2 != null) parts.push('E:' + e2 + 'px');
-        if (m != null) parts.push('M:' + m + 'px');
-        if (parts.length) dims.textContent = parts.join(' · ');
-      }
-    } catch (err) {}
   });
 </script>
 </body>
