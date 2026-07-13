@@ -3020,6 +3020,20 @@
   // 페이지 로드 시 stale dragging state 정리
   clearAllDragState();
 
+  // 좁은 화면에서 시트가 fullscreen(공간 부족으로 전체를 덮은 상태)일 때,
+  // 사용자가 사이드바를 "직접 펼치면" 사이드바와 시트가 같은 공간을 두고 상호배타 관계가 됨
+  // → 시트를 닫는다 (Notion side-peek 패턴). 자동 collapse/expand 가 아니라 사용자 명시 펼침에서만 호출.
+  // 반환: 시트를 닫았으면 true (호출부에서 필요 시 후속 처리).
+  const closeSheetForSidebarExpand = () => {
+    if (state.sheetOpen && body.classList.contains('sheet-fullscreen')) {
+      state.sheetOpen = false;
+      state.sheetExpanded = false;
+      state.floatingShown = false;
+      return true;
+    }
+    return false;
+  };
+
   // ─── Fold button / Manual fold toggle ───
   // 규칙:
   //  · vw >= 1024 (wide): 수동 fold/unfold → 쿠키에 저장 (7일)
@@ -3045,6 +3059,7 @@
     // 사용자 명시 fold/unfold → autoFolded 해제
     state.primaryAutoFolded = false;
     state.floatingShown = false;
+    if (expanded) closeSheetForSidebarExpand();  // 좁은 화면: primary 펼치면 시트 닫음
     apply();
   };
   document.getElementById('btn-fold').addEventListener('click', toggleFold);
@@ -3061,9 +3076,20 @@
   // sheet 타이틀바 fold 버튼 — primarySidebar 토글 (folded 상태에서 fullscreen/expanded 시 노출)
   const sheetFoldBtn = document.getElementById('btn-sheet-fold');
   sheetFoldBtn.addEventListener('click', () => {
-    // viewport 자동 fullscreen 일 땐 vw 가 좁아서 inline 으로 펼치면 layout 깨짐
-    // → 호버 floating 만 허용, click 으로 펼치는 동작은 무시
-    if (body.classList.contains('sheet-fullscreen')) return;
+    // viewport 자동 fullscreen 일 땐 vw 가 좁아 사이드바+시트 공존 불가.
+    // → 클릭 = "시트 닫고 primarySidebar 로 복귀" (호버 floating 은 그대로 glance 용으로 유지)
+    if (body.classList.contains('sheet-fullscreen')) {
+      state.sheetOpen = false;
+      state.sheetExpanded = false;
+      state.floatingShown = false;
+      // 시트가 닫혀 공간이 확보되므로 primary 를 펼침 상태로 되돌림
+      if (state.narrowMode) state.narrowActive = 'primary';
+      else { state.cookiePref = 'unfolded'; writeCookie('unfolded'); }
+      state.primaryAutoFolded = false;
+      setLastUserExpanded('primary');
+      apply();
+      return;
+    }
     toggleFold();
   });
   // hover 시 floating-primary-sidebar 표시 (sheet 가 GNB 영역 덮고 있는 상태에서 메뉴 접근)
@@ -3142,6 +3168,7 @@
     if (expanded) setLastUserExpanded('secondary');
     else if (lastUserExpanded === 'secondary') setLastUserExpanded(null);
     state.secondaryAutoFolded = false;  // 사용자 명시 → auto 해제
+    if (expanded) closeSheetForSidebarExpand();  // 좁은 화면: secondary 펼치면 시트 닫음
     apply();
   };
   const openLocal = () => {
@@ -3149,6 +3176,7 @@
     else state.secondarySidebarOpen = true;
     setLastUserExpanded('secondary');   // 사용자 명시 펼침
     state.secondaryAutoFolded = false;  // 사용자 명시 → auto 해제
+    closeSheetForSidebarExpand();       // 좁은 화면: secondary 펼치면 시트 닫음
     apply();
   };
   const toggleEnd = () => {
