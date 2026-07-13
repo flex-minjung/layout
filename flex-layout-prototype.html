@@ -2805,7 +2805,9 @@
     // Sheet 가 열려있을 때 추가 cascade fold — main visible < 100 이면 사이드바 차례로 접음
     // (sheet 드래그 외에 viewport 변경/사이드바 펼침 등 모든 apply() 시점에 적용)
     // auto-fold 면 state.{local,global}AutoFolded = true 마킹 → 공간 생기면 다시 자동 펼침
-    if (state.sheetOpen) {
+    // expanded 모드는 시트가 primarySidebar 오른쪽에 "도킹"되는 형태(State 1)라 main 과 공간 경쟁이 없음
+    // → cascade fold 를 돌리지 않는다 (primarySidebar 를 접지 않고 그대로 노출)
+    if (state.sheetOpen && !state.sheetExpanded) {
       const calcMainVis = () => innerWidth - (actualG ? primaryW : 0) - (actualL ? secondaryW : 0) - state.sheetWidth;
       if (calcMainVis() < 100 && actualL) {
         actualL = false;
@@ -2865,7 +2867,9 @@
     const sheetFullscreen = state.sheetOpen && (
       state.sheetWidth >= innerWidth ||
       innerWidth - MAIN_RESERVE < SHEET_MIN ||
-      sheetVsSidebarsOverlap
+      sheetVsSidebarsOverlap ||
+      // expanded 상태에서 GlobalSidebar(primary)를 접으면 fullscreen 과 동일 (스펙)
+      (state.sheetExpanded && folded)
     );
     const sheetExpandedMode = state.sheetOpen && state.sheetExpanded && !sheetFullscreen;
     const sheetCovered = sheetFullscreen || sheetExpandedMode;
@@ -3064,13 +3068,29 @@
   };
   document.getElementById('btn-fold').addEventListener('click', toggleFold);
   document.getElementById('btn-fold-floating').addEventListener('click', toggleFold);
+  // expand 진입 시 primarySidebar 를 세션 한정으로 펼쳤다면, collapse/close 때 이전 fold 상태로 복원
+  const restoreFoldAfterExpand = () => {
+    if (state.foldBeforeExpand === 'folded') state.cookiePref = 'folded';
+    state.foldBeforeExpand = null;
+  };
   document.getElementById('btn-sheet-close').addEventListener('click', () => {
     state.sheetOpen = false;
     state.sheetExpanded = false;  // close 시 expanded 의도도 리셋
+    restoreFoldAfterExpand();
     apply();
   });
   document.getElementById('btn-sheet-expand').addEventListener('click', () => {
-    state.sheetExpanded = !state.sheetExpanded;
+    const turningOn = !state.sheetExpanded;
+    state.sheetExpanded = turningOn;
+    if (turningOn) {
+      // expand = State 1: primarySidebar 를 인라인으로 노출하고 시트를 그 오른쪽에 도킹.
+      // folded 였다면 세션 한정으로 펼침(쿠키엔 안 씀) — collapse/close 시 복원.
+      state.foldBeforeExpand = isFolded() ? 'folded' : 'unfolded';
+      state.cookiePref = 'unfolded';
+      state.primaryAutoFolded = false;
+    } else {
+      restoreFoldAfterExpand();
+    }
     apply();
   });
   // sheet 타이틀바 fold 버튼 — primarySidebar 토글 (folded 상태에서 fullscreen/expanded 시 노출)
@@ -3082,6 +3102,7 @@
       state.sheetOpen = false;
       state.sheetExpanded = false;
       state.floatingShown = false;
+      state.foldBeforeExpand = null;  // expand 복원 예약 무효화 (시트 자체를 닫으므로)
       // 시트가 닫혀 공간이 확보되므로 primary 를 펼침 상태로 되돌림
       if (state.narrowMode) state.narrowActive = 'primary';
       else { state.cookiePref = 'unfolded'; writeCookie('unfolded'); }
@@ -3142,6 +3163,8 @@
     if (e.target.closest('.pm-table tbody tr')) return;
     if (e.target.closest(dismissExcludeSelector)) return;
     state.sheetOpen = false;
+    state.sheetExpanded = false;
+    restoreFoldAfterExpand();
     apply();
   });
   // 메인 테이블 행 클릭 → sheet 열기 (체크박스/토글/more/caret 버튼 제외)
