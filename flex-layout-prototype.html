@@ -2594,7 +2594,7 @@
   const NAV_MIN = 180, NAV_MAX = 300;     // primary + floating sidebar (max 300)
   const SIDE_MIN = 180, SIDE_MAX = 360;   // endPanel (max 360)
   const SEC_MAX = 360;                    // StartAside(secondarySidebar/StartPanel) max — 360
-  const SHEET_MIN = 500, SHEET_MAX = 900;
+  const SHEET_MIN = 400, SHEET_MAX = 900;  // 시트 최소 너비(드래그) & fullscreen 전환 기준
   const MAIN_RESERVE = 220;  // sheet 사이즈 변경 시 main 영역 최소 확보 폭
   // aside effective clamp (뷰포트 의존 없이 drag 범위만 enforce)
   const clampSide = (userW) => Math.max(SIDE_MIN, Math.min(SIDE_MAX, userW));   // endPanel
