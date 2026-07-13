@@ -2855,21 +2855,23 @@
       }
     }
 
-    // Sheet 큰 패널 정책 — 두 모드 분리 (Notion peek 패턴)
-    //   FULLSCREEN : ① state.sheetWidth >= innerWidth  OR
-    //                ② innerWidth - MAIN_RESERVE < SHEET_MIN  OR
-    //                ③ 사이드바 + sheet 가 겹쳐서 layout 깨지는 경우 (시각적 overlap 방어)
-    //                → vw 가 작아서 강제 풀 vw 덮음 (primarySidebar 포함)
-    //   EXPANDED   : state.sheetExpanded === true → 사용자 expand 클릭, primarySidebar 제외 영역
-    //   동시 충족 시 FULLSCREEN 우선
-    const sheetVsSidebarsOverlap = (innerWidth - state.sheetWidth) < (primaryContribution + secondaryContribution);
-    const sheetFullscreen = state.sheetOpen && (
-      state.sheetWidth >= innerWidth ||
-      innerWidth - MAIN_RESERVE < SHEET_MIN ||
-      sheetVsSidebarsOverlap ||
-      // expanded 상태에서 GlobalSidebar(primary)를 접으면 fullscreen 과 동일 (스펙)
-      (state.sheetExpanded && folded)
-    );
+    // Sheet fullscreen 판정 — 시트의 두 상태에 따라 기준이 다름 (사이드바는 리사이즈 가능하므로 실제 폭 사용)
+    //   · EXPANDED    : 시트가 primarySidebar 오른쪽에 도킹 → 시트폭 = innerWidth − primary폭.
+    //                   시트폭 < SHEET_MIN 이면(=primary 를 넓혀 눌리거나 vw 축소) fullscreen.
+    //                   primary 를 접으면(folded) 시트가 full 폭이 되므로 이때도 fullscreen.
+    //   · NOT EXPANDED: 인라인 peek. 사이드바는 cascade 로 접힌 상태이므로 pageMain 최소(MAIN_RESERVE)
+    //                   + 시트 최소(SHEET_MIN) 를 못 맞추면 fullscreen (+ 시트폭 ≥ vw, overlap 방어).
+    let sheetFullscreen;
+    if (state.sheetExpanded) {
+      sheetFullscreen = state.sheetOpen && (folded || (innerWidth - state.primarySidebarWidth < SHEET_MIN));
+    } else {
+      const sheetVsSidebarsOverlap = (innerWidth - state.sheetWidth) < (primaryContribution + secondaryContribution);
+      sheetFullscreen = state.sheetOpen && (
+        state.sheetWidth >= innerWidth ||
+        innerWidth - MAIN_RESERVE < SHEET_MIN ||
+        sheetVsSidebarsOverlap
+      );
+    }
     const sheetExpandedMode = state.sheetOpen && state.sheetExpanded && !sheetFullscreen;
     const sheetCovered = sheetFullscreen || sheetExpandedMode;
     const sheetEff = sheetFullscreen
