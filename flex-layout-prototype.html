@@ -2759,9 +2759,8 @@
     const wantedE = state.endUsed && state.endPanelOpen;
     const mainAll = innerWidth - (wantedG?primaryW:0) - (wantedL?secondaryW:0) - (wantedE?endW:0);
     const narrow = mainAll < MAIN_MIN;
-    // 페이지 타이틀바 수치 — 400 기준 narrow 판정에 쓰이는 mainAll 값 (실측 아님)
-    const wMainTitleEl = document.getElementById('w-main-title');
-    if (wMainTitleEl) wMainTitleEl.textContent = Math.round(mainAll);
+    // w-main-title(페이지 타이틀 옆 수치)은 실측 pageMain 폭으로 표시 (아래 rAF 블록에서 갱신).
+    // mainAll 은 "원하는 사이드바를 모두 편 가정값"이라 실제 렌더 폭과 다르므로 표시에 쓰지 않는다.
 
     // narrow 진입/이탈 transition — narrowActive 초기화
     if (narrow !== state.narrowMode) {
@@ -2928,12 +2927,14 @@
     requestAnimationFrame(() => {
       const main = document.getElementById('page-main');
       const wMain = document.getElementById('w-main');
+      const wMainTitle = document.getElementById('w-main-title');
       const wMainBc = document.getElementById('w-main-bc');
       const wMainBcGoals = document.getElementById('w-main-bc-goals');
       const wMainBcNotice = document.getElementById('w-main-bc-notice');
       if (main) {
         const px = Math.round(main.getBoundingClientRect().width);
         if (wMain) wMain.textContent = px;
+        if (wMainTitle) wMainTitle.textContent = px;
         if (wMainBc) wMainBc.textContent = px;
         if (wMainBcGoals) wMainBcGoals.textContent = px;
         if (wMainBcNotice) wMainBcNotice.textContent = px;
