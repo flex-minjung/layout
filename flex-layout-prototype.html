@@ -2880,7 +2880,12 @@
         : Math.min(state.sheetWidth, innerWidth);
     body.classList.toggle('sheet-fullscreen', sheetFullscreen);
     body.classList.toggle('sheet-expanded', sheetExpandedMode);
-    body.classList.toggle('floating-shown', folded && state.floatingShown);
+    // fullscreen 이면 primarySidebar 가 시트(100vw)에 완전히 덮이므로 folded 로 취급 →
+    // 타이틀바 fold 버튼 + hover floating 을 folded 여부와 무관하게 동일하게 노출
+    // (expanded→viewport fullscreen 등 folded 없이 fullscreen 된 경우도 버튼이 뜬다)
+    const foldedForSheet = folded || sheetFullscreen;
+    body.classList.toggle('folded', foldedForSheet);
+    body.classList.toggle('floating-shown', foldedForSheet && state.floatingShown);
 
     // Sizes via CSS vars
     root.style.setProperty('--primary-sidebar', state.primarySidebarWidth + 'px');
