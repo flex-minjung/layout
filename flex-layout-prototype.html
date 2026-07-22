@@ -2716,6 +2716,10 @@
     } catch (e) {}
   };
 
+  // 단발성 플래그: 사용자가 사이드바를 "직접 펼친" 직후 1회 apply() 동안만 true.
+  // 이때 시트는 사이드바를 접는 대신 스스로 폭을 줄여(양보) 사이드바를 유지한다.
+  let sheetYieldToSidebar = false;
+
   const apply = () => {
     // 정책: mainAll < 400 이면 narrow.
     //   narrowActive='none' → cascade auto-close 순서: end → local → global (main ≥ 400 되면 stop)
@@ -2801,25 +2805,39 @@
       actualE = state.narrowActive === 'end';
     }
 
-    // Sheet 가 열려있을 때 추가 cascade fold — main visible < 100 이면 사이드바 차례로 접음
-    // (sheet 드래그 외에 viewport 변경/사이드바 펼침 등 모든 apply() 시점에 적용)
-    // auto-fold 면 state.{local,global}AutoFolded = true 마킹 → 공간 생기면 다시 자동 펼침
-    // expanded 모드는 시트가 primarySidebar 오른쪽에 "도킹"되는 형태(State 1)라 main 과 공간 경쟁이 없음
-    // → cascade fold 를 돌리지 않는다 (primarySidebar 를 접지 않고 그대로 노출)
+    // Sheet 가 열려있을 때 main 최소 확보 정책 (expanded 모드는 primarySidebar 오른쪽 "도킹"이라 공간 경쟁 없음 → 제외)
+    //   · 기본(뷰포트 변경/드래그 등): 시트 우선 → main visible < 100 이면 사이드바 차례로 접음 (secondary → primary)
+    //     auto-fold 면 state.{secondary,primary}AutoFolded = true 마킹 → 공간 생기면 다시 자동 펼침
+    //   · 사용자가 사이드바를 "직접 펼친" 직후(sheetYieldToSidebar): 시트가 양보(축소)해서 사이드바를 유지한다.
+    //     - 펼친 사이드바 + main(≥MAIN_RESERVE) 이 들어갈 공간이 있으면 시트를 그만큼 줄인다.
+    //     - 뷰포트가 좁아 공존 불가하면 시트를 닫는다 (Notion side-peek).
     if (state.sheetOpen && !state.sheetExpanded) {
       const calcMainVis = () => innerWidth - (actualG ? primaryW : 0) - (actualL ? secondaryW : 0) - state.sheetWidth;
-      if (calcMainVis() < 100 && actualL) {
-        actualL = false;
-        state.secondarySidebarOpen = false;
-        state.secondaryAutoFolded = true;
-      }
-      if (calcMainVis() < 100 && actualG) {
-        actualG = false;
-        state.cookiePref = 'folded';
-        writeCookie('folded');
-        state.primaryAutoFolded = true;
+      if (sheetYieldToSidebar) {
+        const sidebarsW = (actualG ? primaryW : 0) + (actualL ? secondaryW : 0);
+        const fitCap = innerWidth - sidebarsW - MAIN_RESERVE;   // main ≥ MAIN_RESERVE 확보 시 시트가 가질 수 있는 최대 폭
+        if (fitCap >= SHEET_MIN) {
+          if (state.sheetWidth > fitCap) state.sheetWidth = fitCap;   // 시트 축소 → 사이드바 유지
+        } else {
+          state.sheetOpen = false;                                   // 공존 불가 → 시트 닫기
+          state.sheetExpanded = false;
+          state.floatingShown = false;
+        }
+      } else {
+        if (calcMainVis() < 100 && actualL) {
+          actualL = false;
+          state.secondarySidebarOpen = false;
+          state.secondaryAutoFolded = true;
+        }
+        if (calcMainVis() < 100 && actualG) {
+          actualG = false;
+          state.cookiePref = 'folded';
+          writeCookie('folded');
+          state.primaryAutoFolded = true;
+        }
       }
     }
+    sheetYieldToSidebar = false;   // 단발성 — 이번 apply() 에서 소진
 
     const folded = !actualG;
     body.classList.toggle('folded', folded);
@@ -3032,18 +3050,12 @@
   // 페이지 로드 시 stale dragging state 정리
   clearAllDragState();
 
-  // 좁은 화면에서 시트가 fullscreen(공간 부족으로 전체를 덮은 상태)일 때,
-  // 사용자가 사이드바를 "직접 펼치면" 사이드바와 시트가 같은 공간을 두고 상호배타 관계가 됨
-  // → 시트를 닫는다 (Notion side-peek 패턴). 자동 collapse/expand 가 아니라 사용자 명시 펼침에서만 호출.
-  // 반환: 시트를 닫았으면 true (호출부에서 필요 시 후속 처리).
-  const closeSheetForSidebarExpand = () => {
-    if (state.sheetOpen && body.classList.contains('sheet-fullscreen')) {
-      state.sheetOpen = false;
-      state.sheetExpanded = false;
-      state.floatingShown = false;
-      return true;
-    }
-    return false;
+  // 사용자가 사이드바를 "직접 펼치면", 시트는 (사이드바를 되접지 않고) 공간에 맞춰 스스로 폭을 줄이도록
+  // 양보 플래그를 세운다 → 다음 apply() 에서 시트 축소로 사이드바가 유지된다.
+  // 공존 불가할 만큼 뷰포트가 좁으면 apply() 가 시트를 닫는다 (Notion side-peek 패턴).
+  // 자동 collapse/expand 가 아니라 사용자 명시 펼침에서만 호출.
+  const yieldSheetToSidebarExpand = () => {
+    if (state.sheetOpen) sheetYieldToSidebar = true;
   };
 
   // ─── Fold button / Manual fold toggle ───
@@ -3071,7 +3083,7 @@
     // 사용자 명시 fold/unfold → autoFolded 해제
     state.primaryAutoFolded = false;
     state.floatingShown = false;
-    if (expanded) closeSheetForSidebarExpand();  // 좁은 화면: primary 펼치면 시트 닫음
+    if (expanded) yieldSheetToSidebarExpand();  // primary 펼치면 시트가 양보(축소), 공존 불가 시 닫음
     apply();
   };
   document.getElementById('btn-fold').addEventListener('click', toggleFold);
@@ -3199,7 +3211,7 @@
     if (expanded) setLastUserExpanded('secondary');
     else if (lastUserExpanded === 'secondary') setLastUserExpanded(null);
     state.secondaryAutoFolded = false;  // 사용자 명시 → auto 해제
-    if (expanded) closeSheetForSidebarExpand();  // 좁은 화면: secondary 펼치면 시트 닫음
+    if (expanded) yieldSheetToSidebarExpand();  // secondary 펼치면 시트가 양보(축소), 공존 불가 시 닫음
     apply();
   };
   const openLocal = () => {
@@ -3207,7 +3219,7 @@
     else state.secondarySidebarOpen = true;
     setLastUserExpanded('secondary');   // 사용자 명시 펼침
     state.secondaryAutoFolded = false;  // 사용자 명시 → auto 해제
-    closeSheetForSidebarExpand();       // 좁은 화면: secondary 펼치면 시트 닫음
+    yieldSheetToSidebarExpand();        // secondary 펼치면 시트가 양보(축소), 공존 불가 시 닫음
     apply();
   };
   const toggleEnd = () => {
