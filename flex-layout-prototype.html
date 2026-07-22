@@ -1618,7 +1618,9 @@
     transform: translateX(0);
     pointer-events: auto;
   }
-  /* sheet fullscreen/expanded 중에도 floating-primary-sidebar 가 sheet 위로 올라오게 z-index 끌어올림 */
+  /* sheet 가 열린 모든 상태(peek/expanded/fullscreen)에서 floating-primary-sidebar 가 sheet 위로 올라오게 z-index 끌어올림
+     (sheet peek=50, expanded/fullscreen=60 → 플로팅은 70 으로 항상 위) */
+  body.sheet-open .floating-primary-sidebar,
   body.sheet-fullscreen .floating-primary-sidebar,
   body.sheet-expanded .floating-primary-sidebar { z-index: 70; }
   /* 리사이즈 드래그 중엔 애니메이션 제거 (즉각 반영) */
@@ -2748,14 +2750,19 @@
       }
       return innerWidth - primaryW - secondaryC - endC >= MAIN_MIN;
     };
-    if (state.secondaryAutoFolded && state.startAsideUsed && !state.secondarySidebarOpen && secondaryUnfoldOk()) {
-      state.secondarySidebarOpen = true;
-      state.secondaryAutoFolded = false;
-    }
+    // 복원 순서 = cascade fold(secondary→primary) 의 역순 → primary 를 먼저 되살린다.
+    // primary 가 접힌 채로 비운 공간을 secondary 가 가로채 "primary→secondary 스왑"으로 보이던 문제 방지:
+    //   primary 가 아직 시스템에 의해 접힌 상태(primaryAutoFolded)면 secondary 는 복원하지 않는다.
+    //   (primary 를 사용자가 직접 접은 경우 primaryAutoFolded=false → 기존대로 secondary 복원 허용)
     if (state.primaryAutoFolded && isFolded() && primaryUnfoldOk()) {
       state.cookiePref = 'unfolded';
       writeCookie('unfolded');
       state.primaryAutoFolded = false;
+    }
+    if (state.secondaryAutoFolded && state.startAsideUsed && !state.secondarySidebarOpen
+        && !state.primaryAutoFolded && secondaryUnfoldOk()) {
+      state.secondarySidebarOpen = true;
+      state.secondaryAutoFolded = false;
     }
 
     const wantedG = !isFolded();                                    // 사용자가 global 펼침 원함?
@@ -2874,14 +2881,16 @@
     }
 
     // Sheet fullscreen 판정 — 시트의 두 상태에 따라 기준이 다름 (사이드바는 리사이즈 가능하므로 실제 폭 사용)
-    //   · EXPANDED    : 시트가 primarySidebar 오른쪽에 도킹 → 시트폭 = innerWidth − primary폭.
-    //                   시트폭 < SHEET_MIN 이면(=primary 를 넓혀 눌리거나 vw 축소) fullscreen.
-    //                   primary 를 접으면(folded) 시트가 full 폭이 되므로 이때도 fullscreen.
+    //   · EXPANDED    : primarySidebar 의 현재 상태를 유지한 채 그 오른쪽에 도킹.
+    //                   - primary 펼침 + 남는 폭 < SHEET_MIN (primary 를 넓혀 눌림 / vw 축소) → fullscreen(강제).
+    //                   - primary 접힘 → fullscreen 이 아니라 expanded 모드 유지.
+    //                     CSS(body.folded.sheet-expanded → left:0)로 시트가 full 폭이 되어 시각적으로 fullscreen 과 동일하되,
+    //                     collapse/fold 버튼은 그대로 노출되어 되돌릴 수 있다.
     //   · NOT EXPANDED: 인라인 peek. 사이드바는 cascade 로 접힌 상태이므로 pageMain 최소(MAIN_RESERVE)
     //                   + 시트 최소(SHEET_MIN) 를 못 맞추면 fullscreen (+ 시트폭 ≥ vw, overlap 방어).
     let sheetFullscreen;
     if (state.sheetExpanded) {
-      sheetFullscreen = state.sheetOpen && (folded || (innerWidth - state.primarySidebarWidth < SHEET_MIN));
+      sheetFullscreen = state.sheetOpen && !folded && (innerWidth - state.primarySidebarWidth < SHEET_MIN);
     } else {
       const sheetVsSidebarsOverlap = (innerWidth - state.sheetWidth) < (primaryContribution + secondaryContribution);
       sheetFullscreen = state.sheetOpen && (
@@ -3100,17 +3109,10 @@
     apply();
   });
   document.getElementById('btn-sheet-expand').addEventListener('click', () => {
-    const turningOn = !state.sheetExpanded;
-    state.sheetExpanded = turningOn;
-    if (turningOn) {
-      // expand = State 1: primarySidebar 를 인라인으로 노출하고 시트를 그 오른쪽에 도킹.
-      // folded 였다면 세션 한정으로 펼침(쿠키엔 안 씀) — collapse/close 시 복원.
-      state.foldBeforeExpand = isFolded() ? 'folded' : 'unfolded';
-      state.cookiePref = 'unfolded';
-      state.primaryAutoFolded = false;
-    } else {
-      restoreFoldAfterExpand();
-    }
+    // expand = primarySidebar 의 "현재 상태"를 유지한 채 시트를 그 오른쪽에 도킹.
+    //   · primary 펼침 → 시트가 primary 오른쪽 영역을 채움.
+    //   · primary 접힘 → 시트가 full 폭(fullscreen 과 시각적으로 동일). 강제로 펼치지 않는다.
+    state.sheetExpanded = !state.sheetExpanded;
     apply();
   });
   // sheet 타이틀바 fold 버튼 — primarySidebar 토글 (folded 상태에서 fullscreen/expanded 시 노출)
